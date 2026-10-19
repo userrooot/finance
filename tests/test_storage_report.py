@@ -42,3 +42,29 @@ def test_report(tmp_path):
 def test_empty_report(tmp_path):
     md = build_report(OpportunityStore(tmp_path), DAY)
     assert "No opportunities passed the cost filters" in md
+
+
+def test_report_flags_data_errors_instead_of_claiming_no_edge(tmp_path):
+    from datetime import date
+
+    from arb.report import build_report
+    from arb.storage import OpportunityStore
+
+    store = OpportunityStore(tmp_path)
+    store.log_scan(1_760_000_000_000, {"funding": 0}, ["data: order_book: NetworkError"], 1.0)
+    day = date(2025, 10, 9)
+    text = build_report(store, day)
+    assert "Warning: 1 scanner/data errors" in text
+    assert "This is a valid result" not in text
+
+
+async def test_tracking_source_records_failures():
+    from arb.__main__ import TrackingSource
+    from tests.fakes import FakeSource
+
+    src = TrackingSource(FakeSource())
+    try:
+        await src.order_book("binance", "BTC/USDT")
+    except KeyError:
+        pass
+    assert src.calls == 1 and len(src.failures) == 1

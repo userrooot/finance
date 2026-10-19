@@ -28,9 +28,14 @@ def build_report(store: OpportunityStore, day: date) -> str:
     n_errors = int(sum(len(e) for e in scans["errors"])) if n_scans else 0
     out = [f"# Arbitrage scan report - {day.isoformat()}", "",
            f"Scan cycles: {n_scans} | Errors: {n_errors}", ""]
+    if n_errors:
+        sample = next(e for errs in scans["errors"] for e in errs)
+        out += [f"**Warning: {n_errors} scanner/data errors.** Missing data is not the same as no edge; "
+                f"results below cover only what was fetched. First error: `{sample}`", ""]
     if opps.empty:
-        out += ["No opportunities passed the cost filters.", "",
-                "This is a valid result: after fees, slippage and tax, no edge was found in this period.", ""]
+        out += ["No opportunities passed the cost filters.", ""]
+        if not n_errors:
+            out += ["This is a valid result: after fees, slippage and tax, no edge was found in this period.", ""]
         return "\n".join(out)
 
     # scan-cycle denominator: logged scans, else distinct opportunity timestamps

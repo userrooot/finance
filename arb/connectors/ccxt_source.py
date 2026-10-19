@@ -27,11 +27,14 @@ class CcxtSource:
     async def order_book(self, exchange: str, symbol: str, depth: int = 20) -> OrderBook:
         async with self._sem:
             ob = await self._clients[exchange].fetch_order_book(symbol, limit=depth)
+        # Derivative books (e.g. OKX swaps) quote size in contracts; scanners expect base units.
+        market = (await self.markets(exchange)).get(symbol, {})
+        mult = float(market.get("contractSize") or 1.0) if market.get("contract") else 1.0
         return OrderBook(
             exchange=exchange,
             symbol=symbol,
-            bids=[(float(p), float(q)) for p, q, *_ in ob["bids"]],
-            asks=[(float(p), float(q)) for p, q, *_ in ob["asks"]],
+            bids=[(float(p), float(q) * mult) for p, q, *_ in ob["bids"]],
+            asks=[(float(p), float(q) * mult) for p, q, *_ in ob["asks"]],
             timestamp_ms=ob.get("timestamp") or int(time.time() * 1000),
         )
 

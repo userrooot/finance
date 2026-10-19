@@ -27,7 +27,36 @@ FAST_SCANNERS = {
 STAT_ARB_EVERY_S = 3600
 
 
+class TrackingSource:
+    """Wraps a MarketData source and records every failed call.
+
+    Scanners skip symbols whose data fails, so without this an outage would look like
+    "no opportunities" instead of "no data".
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.exchanges = inner.exchanges
+        self.calls = 0
+        self.failures: list[str] = []
+
+    def __getattr__(self, name):
+        attr = getattr(self._inner, name)
+        if name == "close" or not asyncio.iscoroutinefunction(attr):
+            return attr
+
+        async def tracked(*args, **kwargs):
+            self.calls += 1
+            try:
+                return await attr(*args, **kwargs)
+            except Exception as e:
+                self.failures.append(f"{name}{args[:2]}: {type(e).__name__}: {str(e)[:200]}")
+                raise
+        return tracked
+
+
 async def run_cycle(source, settings: Settings, costs: CostModel, include_stat_arb: bool) -> tuple[list[Opportunity], dict[str, int], list[str]]:
+    source = TrackingSource(source)
     scanners = dict(FAST_SCANNERS)
     if include_stat_arb:
         scanners["stat_arb"] = stat_arb.scan
@@ -43,6 +72,9 @@ async def run_cycle(source, settings: Settings, costs: CostModel, include_stat_a
             continue
         opps.extend(res)
         counts[name] = len(res)
+    if source.failures:
+        log.warning("%d of %d market-data calls failed, e.g. %s", len(source.failures), source.calls, source.failures[0])
+    errors.extend(f"data: {f}" for f in source.failures)
     return opps, counts, errors
 
 
