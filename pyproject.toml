@@ -1,0 +1,9 @@
+[project]
+name = "arb"
+version = "0.1.0"
+description = "Crypto arbitrage / inefficiency scanner and trading system"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

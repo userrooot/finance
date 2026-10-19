@@ -1,0 +1,72 @@
+# Global settings. Live trading stays OFF until a strategy passes backtest + walk-forward + paper trading.
+live_trading: false
+
+capital:
+  total_usd: 1100          # ~₹1 lakh starting capital
+  max_per_trade_usd: 300   # never commit more than this to one opportunity
+
+risk:
+  max_daily_loss_pct: 2.0
+  max_total_loss_pct: 10.0
+
+# India: crypto (VDA) gains taxed at 30% + 4% cess; losses cannot be set off against gains.
+# Verify with a CA — this is applied to positive net PnL only, so reported numbers are after-tax.
+tax:
+  rate_on_gains: 0.312
+
+# Default VIP-0 fee tiers as fractions (0.001 = 0.1%). Update to your actual tier / BNB discounts.
+exchanges:
+  binance:
+    fees:
+      spot: {maker: 0.0010, taker: 0.0010}
+      swap: {maker: 0.0002, taker: 0.0005}
+      future: {maker: 0.0002, taker: 0.0005}
+  bybit:
+    fees:
+      spot: {maker: 0.0010, taker: 0.0010}
+      swap: {maker: 0.0002, taker: 0.00055}
+      future: {maker: 0.0002, taker: 0.00055}
+  okx:
+    fees:
+      spot: {maker: 0.0008, taker: 0.0010}
+      swap: {maker: 0.0002, taker: 0.0005}
+      future: {maker: 0.0002, taker: 0.0005}
+
+# Approx. withdrawal fees in units of the asset (cheapest common network). Used by cross-exchange rebalancing cost.
+withdrawal_fees:
+  USDT: 1.0
+  BTC: 0.0001
+  ETH: 0.0008
+  SOL: 0.01
+  XRP: 0.25
+
+universe:
+  quote: USDT
+  # Symbols scanned on every exchange (spot). Perp/futures symbols are derived from these.
+  base_assets: [BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, TON, SUI, LTC]
+
+scanners:
+  cross_exchange:
+    enabled: true
+    min_net_bps: 5            # report only if net edge after all costs >= 5 bps
+  triangular:
+    enabled: true
+    exchanges: [binance]
+    min_net_bps: 1
+  funding:
+    enabled: true
+    holding_days: 7           # horizon used to value funding income
+    min_annualized_net_pct: 10
+  basis:
+    enabled: true
+    min_annualized_net_pct: 8
+  stat_arb:
+    enabled: true
+    exchange: binance
+    timeframe: 1h
+    lookback_bars: 720        # 30 days of hourly bars
+    max_coint_pvalue: 0.05
+    entry_z: 2.0
+
+storage:
+  dir: data
