@@ -26,6 +26,8 @@ class Capital(BaseModel):
 class Risk(BaseModel):
     max_daily_loss_pct: float
     max_total_loss_pct: float
+    max_gross_exposure_x: float = 2.0  # sum of |position notional| / total capital
+    max_quote_age_s: float = 15.0
 
 
 class Tax(BaseModel):
@@ -80,6 +82,44 @@ class Storage(BaseModel):
     dir: str = "data"
 
 
+class FundingCarryStrategyCfg(BaseModel):
+    exchange: str = "binance"
+    bases: list[str] = Field(default_factory=lambda: ["BTC", "ETH"])
+    notional_usd: float = 300.0
+    entry_annualized_pct: float = 15.0
+    exit_annualized_pct: float = 3.0
+    avg_window: int = 21
+    max_hold_days: float = 30.0
+
+
+class StatArbStrategyCfg(BaseModel):
+    exchange: str = "binance"
+    pairs: list[tuple[str, str]] = Field(default_factory=lambda: [("ETH", "BTC")])
+    lookback_bars: int = 720
+    entry_z: float = 2.0
+    exit_z: float = 0.5
+    stop_z: float = 4.0
+    max_hold_bars: int = 240
+    notional_usd: float = 300.0
+
+
+class Strategies(BaseModel):
+    funding_carry: FundingCarryStrategyCfg = FundingCarryStrategyCfg()
+    stat_arb: StatArbStrategyCfg = StatArbStrategyCfg()
+
+
+class BacktestCfg(BaseModel):
+    timeframe: str = "1h"
+    spread_bps: float = 2.0
+    slippage_bps: float = 2.0
+
+
+class PaperCfg(BaseModel):
+    interval_s: float = 30.0
+    state_dir: str = "data/paper"
+    book_depth: int = 20
+
+
 class Settings(BaseModel):
     live_trading: bool = False
     capital: Capital
@@ -90,6 +130,9 @@ class Settings(BaseModel):
     universe: Universe
     scanners: Scanners = Scanners()
     storage: Storage = Storage()
+    strategies: Strategies = Strategies()
+    backtest: BacktestCfg = BacktestCfg()
+    paper: PaperCfg = PaperCfg()
 
 
 def load_settings(path: str | Path = DEFAULT_PATH) -> Settings:

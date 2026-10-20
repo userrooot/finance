@@ -59,7 +59,7 @@ def test_report_flags_data_errors_instead_of_claiming_no_edge(tmp_path):
 
 
 async def test_tracking_source_records_failures():
-    from arb.__main__ import TrackingSource
+    from arb.connectors.tracking import TrackingSource
     from tests.fakes import FakeSource
 
     src = TrackingSource(FakeSource())

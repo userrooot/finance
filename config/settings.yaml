@@ -70,3 +70,33 @@ scanners:
 
 storage:
   dir: data
+
+# ---------------- Phase 2: strategies, backtest, paper trading ----------------
+strategies:
+  funding_carry:
+    exchange: binance
+    bases: [BTC, ETH, SOL]
+    notional_usd: 300           # per leg; spot + perp = 2 legs
+    entry_annualized_pct: 15    # enter when trailing avg funding, net of round-trip costs, beats this
+    exit_annualized_pct: 3      # exit when trailing avg funding falls below this
+    avg_window: 21              # number of past funding settlements averaged (21 x 8h = 7 days)
+    max_hold_days: 30
+  stat_arb:
+    exchange: binance
+    pairs: [[ETH, BTC]]         # (y, x); pick pairs from Phase 1 stat_arb reports / walk-forward
+    lookback_bars: 720
+    entry_z: 2.0
+    exit_z: 0.5
+    stop_z: 4.0
+    max_hold_bars: 240
+    notional_usd: 300           # total across both legs
+
+backtest:
+  timeframe: 1h
+  spread_bps: 2.0               # modelled full bid/ask spread around the bar close
+  slippage_bps: 2.0             # extra adverse slippage per fill
+
+paper:
+  interval_s: 30
+  state_dir: data/paper
+  book_depth: 20
