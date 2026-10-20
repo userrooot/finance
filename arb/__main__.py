@@ -84,15 +84,40 @@ def main() -> None:
     p_scan.add_argument("--interval", type=float, default=60.0, help="seconds between cycles")
     p_rep = sub.add_parser("report", help="write the daily opportunity report")
     p_rep.add_argument("--day", help="YYYY-MM-DD (UTC), default today")
+
+    from arb import trading_cli as tc
+
+    p_hist = sub.add_parser("fetch-history", help="download OHLCV + funding history for a strategy")
+    p_bt = sub.add_parser("backtest", help="backtest a strategy on downloaded history")
+    p_wf = sub.add_parser("walk-forward", help="walk-forward (out-of-sample) evaluation")
+    p_paper = sub.add_parser("paper", help="paper trade a strategy on live data (no real orders)")
+    p_prep = sub.add_parser("paper-report", help="summarise a paper trading run")
+    for p in (p_hist, p_bt, p_wf, p_paper, p_prep):
+        p.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
+    p_hist.add_argument("--days", type=int, default=365)
+    p_bt.add_argument("--days", type=int, help="only the last N days")
+    p_wf.add_argument("--train-days", type=int, default=60)
+    p_wf.add_argument("--test-days", type=int, default=30)
+    p_paper.add_argument("--cycles", type=int, help="stop after N cycles (default: run forever)")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     settings = load_settings(args.config)
     if settings.live_trading:
-        raise SystemExit("live_trading=true but no execution engine exists yet (Phase 1 is read-only). Set it to false.")
+        raise SystemExit("live_trading=true but no live execution engine exists yet. Set it to false.")
 
     if args.cmd == "scan":
         asyncio.run(scan_loop(settings, args.once, args.interval))
+    elif args.cmd == "fetch-history":
+        asyncio.run(tc.fetch_history(settings, args.strategy, args.days))
+    elif args.cmd == "backtest":
+        tc.backtest(settings, args.strategy, args.days)
+    elif args.cmd == "walk-forward":
+        tc.walk_forward_cmd(settings, args.strategy, args.train_days, args.test_days)
+    elif args.cmd == "paper":
+        asyncio.run(tc.paper(settings, args.strategy, args.cycles))
+    elif args.cmd == "paper-report":
+        tc.paper_report_cmd(settings, args.strategy)
     else:
         day = date.fromisoformat(args.day) if args.day else datetime.now(timezone.utc).date()
         path = write_report(OpportunityStore(settings.storage.dir), day)

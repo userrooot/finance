@@ -62,7 +62,8 @@ class PaperTrader:
 
     # --- warm-up -------------------------------------------------------------------------
     async def warm_up(self) -> None:
-        if not self.fresh:
+        # Also retry after a restart if an earlier warm-up failed and the strategy has no history yet.
+        if not self.fresh and any(v for v in self.strategy.state_dict().values()):
             return
         req = self.strategy.requirements()
         now_ms = int(self.clock() * 1000)

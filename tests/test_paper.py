@@ -265,3 +265,47 @@ def test_notifier_swallows_errors(monkeypatch, caplog):
     monkeypatch.setattr("urllib.request.urlopen", boom)
     assert Notifier("SECRETTOKEN", "1").send("x") is False
     assert "SECRETTOKEN" not in caplog.text
+
+
+class FundingOnly(Strategy):
+    """Keeps only funding history as state, like FundingCarry."""
+
+    def __init__(self):
+        self.rates = []
+
+    def requirements(self):
+        return Requirements(quotes=[("binance", SPOT, "spot"), ("binance", PERP, "swap")],
+                            funding=[("binance", PERP)])
+
+    def on_snapshot(self, snapshot, portfolio):
+        return []
+
+    def state_dict(self):
+        return {"funding_history": list(self.rates)}
+
+    def load_state(self, state):
+        self.rates = list(state.get("funding_history", []))
+
+    def seed_funding_history(self, exchange, symbol, rates):
+        self.rates = list(rates)
+
+
+async def test_warm_up_retried_after_restart_when_first_attempt_failed(tmp_path):
+    clock = Clock()
+    src = make_source(clock)
+    real = src.funding_history
+
+    async def down(*a, **k):
+        raise ConnectionError("exchange unreachable")
+
+    src.funding_history = down
+    t, s, _, _ = make(tmp_path, clock=clock, src=src, strategy=FundingOnly())
+    await t.warm_up()
+    await t.run_once()  # writes state.json without any funding history
+    assert not s.rates
+
+    src.funding_history = real
+    src.add_funding_history("binance", PERP, [(T0 * 1000 - 1000, 0.0002)])
+    t2, s2, _, _ = make(tmp_path, clock=clock, src=src, strategy=FundingOnly())
+    await t2.warm_up()
+    assert s2.rates == [0.0002]
