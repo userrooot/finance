@@ -23,6 +23,9 @@ class MarketData(Protocol):
 
     async def funding(self, exchange: str, symbols: list[str]) -> list[FundingInfo]: ...
 
+    async def funding_history(self, exchange: str, symbol: str, since_ms: int) -> list[tuple[int, float]]:
+        """Settled funding rates [(timestamp_ms, rate), ...] since `since_ms`, oldest first."""
+
     async def ohlcv(self, exchange: str, symbol: str, timeframe: str, limit: int) -> list[list[float]]:
         """[[timestamp_ms, open, high, low, close, volume], ...] oldest first."""
 

@@ -75,6 +75,22 @@ class CcxtSource:
         rates = [float(h["fundingRate"]) for h in hist if h.get("fundingRate") is not None]
         return sum(rates) / len(rates) if rates else None
 
+    async def funding_history(self, exchange: str, symbol: str, since_ms: int) -> list[tuple[int, float]]:
+        client = self._clients[exchange]
+        out: dict[int, float] = {}
+        since = since_ms
+        for _ in range(50):  # pagination safety cap
+            async with self._sem:
+                batch = await client.fetch_funding_rate_history(symbol, since=since, limit=1000)
+            rows = [(int(h["timestamp"]), float(h["fundingRate"])) for h in batch
+                    if h.get("timestamp") is not None and h.get("fundingRate") is not None]
+            new = [r for r in rows if r[0] not in out]
+            if not new:
+                break
+            out.update(new)
+            since = max(r[0] for r in rows) + 1
+        return sorted(out.items())
+
     async def ohlcv(self, exchange: str, symbol: str, timeframe: str, limit: int) -> list[list[float]]:
         client = self._clients[exchange]
         tf_ms = client.parse_timeframe(timeframe) * 1000

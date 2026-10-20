@@ -26,6 +26,7 @@ class FakeSource:
         self._books: dict[tuple[str, str], OrderBook] = {}
         self._funding: dict[str, list[FundingInfo]] = {}
         self._ohlcv: dict[tuple[str, str], list[list[float]]] = {}
+        self._funding_hist: dict[tuple[str, str], list[tuple[int, float]]] = {}
 
     def add_market(self, exchange: str, market: dict) -> None:
         if exchange not in self.exchanges:
@@ -40,6 +41,9 @@ class FakeSource:
 
     def add_ohlcv(self, exchange: str, symbol: str, rows: list[list[float]]) -> None:
         self._ohlcv[(exchange, symbol)] = rows
+
+    def add_funding_history(self, exchange: str, symbol: str, rows: list[tuple[int, float]]) -> None:
+        self._funding_hist[(exchange, symbol)] = list(rows)
 
     async def markets(self, exchange):
         return self._markets.get(exchange, {})
@@ -59,6 +63,9 @@ class FakeSource:
 
     async def funding(self, exchange, symbols):
         return [f for f in self._funding.get(exchange, []) if f.symbol in symbols]
+
+    async def funding_history(self, exchange, symbol, since_ms):
+        return sorted(r for r in self._funding_hist.get((exchange, symbol), []) if r[0] >= since_ms)
 
     async def ohlcv(self, exchange, symbol, timeframe, limit):
         return self._ohlcv[(exchange, symbol)][-limit:]
