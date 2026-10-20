@@ -123,8 +123,7 @@ Limits come from `capital` and `risk` in `settings.yaml` and are checked in `arb
 - **Per-leg cap:** each opening leg's notional must be at most `capital.max_per_trade_usd` (300),
   with 1% rounding slack. Closing orders are exempt.
 - **Gross exposure cap:** total position notional must stay within
-  `capital.total_usd` x `risk.max_gross_exposure_x`. The code default is 2.0; the key is not set
-  in `settings.yaml`.
+  `capital.total_usd` x `risk.max_gross_exposure_x` (2.0).
 - **No spot shorting:** a spot sell cannot exceed the spot quantity held.
 - **Stale quotes rejected:** entries using a quote older than `risk.max_quote_age_s` (15 s) are rejected.
 - **Daily loss, 2%:** equity down 2% from the UTC day's start halts new entries until the next
@@ -221,8 +220,8 @@ All settings live in `config/settings.yaml`.
 - `capital.total_usd` (1100) and `capital.max_per_trade_usd` (300): sizing inputs for
   capacity and notional, and the per-leg cap in Phase 2. The starting figure is about INR 1 lakh.
 - `risk.max_daily_loss_pct` (2.0) and `risk.max_total_loss_pct` (10.0): enforced by the paper
-  and backtest engines (see section 5). `risk.max_gross_exposure_x` and `risk.max_quote_age_s`
-  are optional keys with code defaults.
+  and backtest engines (see section 5). `risk.max_gross_exposure_x` (2.0) and `risk.max_quote_age_s`
+  (15 s) set the exposure cap and the stale-price limit.
 - `tax.rate_on_gains`: see section 3.
 - `exchanges.<name>.fees`: **update these to your actual VIP tier and any BNB or
   fee-token discounts.** The defaults are VIP-0 and overstate costs for active traders.
