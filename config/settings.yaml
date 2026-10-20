@@ -8,6 +8,8 @@ capital:
 risk:
   max_daily_loss_pct: 2.0
   max_total_loss_pct: 10.0
+  max_gross_exposure_x: 2.0   # sum of |position notional| <= 2 x total capital
+  max_quote_age_s: 15         # reject new entries on older prices
 
 # India: crypto (VDA) gains taxed at 30% + 4% cess; losses cannot be set off against gains.
 # Verify with a CA — this is applied to positive net PnL only, so reported numbers are after-tax.
