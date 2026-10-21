@@ -1,0 +1,15 @@
+[Unit]
+Description=arb funding-carry paper trader
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=arb
+WorkingDirectory=/opt/arb
+EnvironmentFile=/opt/arb/.env
+ExecStart=/opt/arb/.venv/bin/python -m arb paper --strategy funding_carry
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

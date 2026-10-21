@@ -5,7 +5,9 @@ import asyncio
 import json
 import logging
 import os
+import shutil
 import time
+from datetime import datetime, timezone
 from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
@@ -23,6 +25,7 @@ from arb.strategies.base import Strategy
 log = logging.getLogger(__name__)
 
 WARMUP_FUNDING_DAYS = 14
+BACKUP_KEEP = 30
 
 
 class PaperTrader:
@@ -45,6 +48,8 @@ class PaperTrader:
         self.fresh = not self.state_path.exists()
         self.started_ms = int(clock() * 1000)
         self.last_ts: int | None = None
+        self.last_summary_day: str | None = None
+        self.summary_base: dict | None = None  # portfolio totals when the previous summary was sent
         # (exchange, symbol) -> [next_funding_ms, rate]
         self.tracker: dict[tuple[str, str], tuple[int, float]] = {}
         saved = None if self.fresh else json.loads(self.state_path.read_text())
@@ -55,6 +60,8 @@ class PaperTrader:
             self.tracker = {(ex, sym): (int(n), float(r)) for ex, sym, n, r in saved.get("funding_tracker", [])}
             self.last_ts = saved.get("last_ts")
             self.started_ms = saved.get("started_ms", self.started_ms)
+            self.last_summary_day = saved.get("last_summary_day")
+            self.summary_base = saved.get("summary_base")
         else:
             self.portfolio = Portfolio(settings.capital.total_usd)
             self.risk = RiskManager(settings, settings.capital.total_usd)
@@ -157,6 +164,7 @@ class PaperTrader:
         for intent, reason in res.rejected:
             self._append("events.jsonl", {"ts": snap.ts_ms, "type": "rejected", "group": intent.group_id,
                                           "symbol": intent.symbol, "side": intent.side, "reason": reason})
+        self._daily_summary(res)
         self._persist()
         self._notify(res)
         return res
@@ -191,10 +199,55 @@ class PaperTrader:
             "strategy": self.strategy.state_dict(),
             "funding_tracker": [[ex, sym, n, r] for (ex, sym), (n, r) in self.tracker.items()],
             "last_ts": self.last_ts, "started_ms": self.started_ms,
+            "last_summary_day": self.last_summary_day, "summary_base": self.summary_base,
         }
         tmp = self.state_path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(state))
         os.replace(tmp, self.state_path)
+        self._backup_state()
+
+    def _backup_state(self) -> None:
+        """Copy state.json to backups/state-YYYY-MM-DD.json (UTC) once a day, keeping the newest BACKUP_KEEP."""
+        try:
+            day = datetime.fromtimestamp(self.clock(), tz=timezone.utc).strftime("%Y-%m-%d")
+            bdir = self.dir / "backups"
+            target = bdir / f"state-{day}.json"
+            if target.exists():
+                return
+            bdir.mkdir(exist_ok=True)
+            shutil.copyfile(self.state_path, target)
+            for old in sorted(bdir.glob("state-*.json"))[:-BACKUP_KEEP]:
+                old.unlink()
+        except Exception as e:
+            log.warning("state backup failed: %s", e)
+
+    def _daily_summary(self, res: StepResult) -> None:
+        """Once per UTC day send a short summary of activity since the previous summary. Never raises."""
+        if self.notifier is None:
+            return
+        try:
+            day = datetime.fromtimestamp(self.clock(), tz=timezone.utc).strftime("%Y-%m-%d")
+            if self.last_summary_day == day:
+                return
+            pf, st = self.portfolio, self.risk.state
+            base = self.summary_base or {"equity": pf.initial_cash, "fees": 0.0, "funding": 0.0, "ts_ms": 0}
+            closed = [t for t in pf.closed_trades if t.close_ms > base["ts_ms"]]
+            ex = pf.exec_stats
+            mo, mf = ex.get("maker_orders", 0.0), ex.get("maker_fills", 0.0)
+            maker = f"{mf / mo:.0%} ({mf:.0f}/{mo:.0f})" if mo else "n/a"
+            risk = "KILLED: " + st.kill_reason if st.killed else (
+                "daily halt" if not self.risk.entries_allowed else "ok")
+            text = (f"DAILY SUMMARY {day} (since last summary)\n"
+                    f"equity {res.equity:.2f} | PnL {res.equity - base['equity']:+.2f}\n"
+                    f"open groups {len(pf.open_groups())} | closed trades {len(closed)}\n"
+                    f"fees {pf.fees_paid - base['fees']:.2f} | funding {pf.funding_received - base['funding']:+.2f}\n"
+                    f"maker fill rate {maker} | risk {risk}")
+            self.last_summary_day = day
+            self.summary_base = {"equity": res.equity, "fees": pf.fees_paid, "funding": pf.funding_received,
+                                 "ts_ms": int(self.clock() * 1000)}
+            self.notifier.send(text)
+        except Exception as e:
+            log.warning("daily summary failed: %s", type(e).__name__)
 
     def _notify(self, res: StepResult) -> None:
         if self.notifier is None:

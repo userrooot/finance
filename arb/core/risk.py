@@ -28,6 +28,8 @@ class RiskState:
     daily_halt_day: str | None = None
     killed: bool = False
     kill_reason: str = ""
+    paused: bool = False  # new entries off until a human resumes (Telegram /pause, reconcile mismatch)
+    pause_reason: str = ""
 
 
 class RiskManager:
@@ -37,7 +39,16 @@ class RiskManager:
 
     @property
     def entries_allowed(self) -> bool:
-        return not self.state.killed and self.state.daily_halt_day != self.state.day
+        return not self.state.killed and not self.state.paused and self.state.daily_halt_day != self.state.day
+
+    def pause(self, reason: str) -> None:
+        self.state.paused, self.state.pause_reason = True, reason
+
+    def resume(self) -> None:
+        self.state.paused, self.state.pause_reason = False, ""
+
+    def kill(self, reason: str) -> None:
+        self.state.killed, self.state.kill_reason = True, reason
 
     def update(self, ts_ms: int, equity: float) -> list[str]:
         """Roll the trading day and evaluate loss limits. Returns human-readable events."""
@@ -98,7 +109,9 @@ class RiskManager:
             return None  # closing is always allowed, even when halted or killed
 
         if not self.entries_allowed:
-            return "entries halted: " + (self.state.kill_reason if self.state.killed else "daily loss limit")
+            why = (self.state.kill_reason if self.state.killed
+                   else f"paused ({self.state.pause_reason})" if self.state.paused else "daily loss limit")
+            return "entries halted: " + why
         max_age_ms = cfg.risk.max_quote_age_s * 1000
         for l in legs:
             q = snapshot.quote(l.exchange, l.symbol)

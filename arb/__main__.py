@@ -92,23 +92,53 @@ def main() -> None:
     p_wf = sub.add_parser("walk-forward", help="walk-forward (out-of-sample) evaluation")
     p_paper = sub.add_parser("paper", help="paper trade a strategy on live data (no real orders)")
     p_prep = sub.add_parser("paper-report", help="summarise a paper trading run")
-    for p in (p_hist, p_bt, p_wf, p_paper, p_prep):
+    p_val = sub.add_parser("validate", help="paper-vs-backtest gate before going live (exit 1 on FAIL)")
+    for p in (p_hist, p_bt, p_wf, p_paper, p_prep, p_val):
         p.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
+    p_val.add_argument("--source", choices=("ccxt", "binance-vision"), default="binance-vision",
+                       help="history importer used to cover the paper period")
     p_hist.add_argument("--days", type=int, default=365)
     p_hist.add_argument("--source", choices=("ccxt", "binance-vision"), default="ccxt",
                         help="binance-vision = public archive at data.binance.vision (binance only)")
     p_bt.add_argument("--days", type=int, help="only the last N days")
     p_wf.add_argument("--train-days", type=int, default=60)
     p_wf.add_argument("--test-days", type=int, default=30)
+    p_tax = sub.add_parser("tax-export", help="export fills and closed trades for a calendar year (CSV, IST dates)")
+    p_tax.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
+    p_tax.add_argument("--year", type=int, required=True)
+    p_tax.add_argument("--state-dir", help="override the state directory")
+    p_tax.add_argument("--live", action="store_true", help="use data/live/<strategy>")
     p_paper.add_argument("--cycles", type=int, help="stop after N cycles (default: run forever)")
+    p_live = sub.add_parser("live", help="REAL MONEY: live trading behind the safety gate (see docs/GO_LIVE.md)")
+    p_live.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
+    p_live.add_argument("--cycles", type=int, help="stop after N cycles (default: run forever)")
+    p_flat = sub.add_parser("flatten-all", help="REAL MONEY: close all perp positions and the bot's spot on an exchange")
+    p_flat.add_argument("--exchange", required=True)
+    p_flat.add_argument("--strategy", choices=tc.STRATEGIES, required=True, help="whose live state lists the bot's spot")
+    p_flat.add_argument("--yes-really", action="store_true", help="required: confirms you want market orders now")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     settings = load_settings(args.config)
-    if settings.live_trading:
-        raise SystemExit("live_trading=true but no live execution engine exists yet. Set it to false.")
+    if args.cmd == "tax-export":
+        from pathlib import Path
 
-    if args.cmd == "scan":
+        from arb.tax_export import export_tax
+
+        sd = Path(args.state_dir) if args.state_dir else (
+            Path("data/live") / args.strategy if args.live else Path(settings.paper.state_dir) / args.strategy)
+        out = export_tax(sd, args.year, Path("reports") / f"tax_{args.strategy}_{args.year}")
+        print(f"Saved to {out}_fills.csv, {out}_trades.csv, {out}_README.txt")
+        return
+    if settings.live_trading and args.cmd == "paper":
+        raise SystemExit("live_trading=true: paper trading is refused so the two are never confused. "
+                         "Use `python -m arb live`, or set live_trading: false.")
+
+    if args.cmd == "live":
+        asyncio.run(tc.live(settings, args.strategy, args.cycles))
+    elif args.cmd == "flatten-all":
+        tc.flatten_all_cmd(settings, args.exchange, args.strategy, args.yes_really)
+    elif args.cmd == "scan":
         asyncio.run(scan_loop(settings, args.once, args.interval))
     elif args.cmd == "fetch-history":
         asyncio.run(tc.fetch_history(settings, args.strategy, args.days, args.source))
@@ -120,6 +150,8 @@ def main() -> None:
         asyncio.run(tc.paper(settings, args.strategy, args.cycles))
     elif args.cmd == "paper-report":
         tc.paper_report_cmd(settings, args.strategy)
+    elif args.cmd == "validate":
+        raise SystemExit(tc.validate_cmd(settings, args.strategy, args.source))
     else:
         day = date.fromisoformat(args.day) if args.day else datetime.now(timezone.utc).date()
         path = write_report(OpportunityStore(settings.storage.dir), day)

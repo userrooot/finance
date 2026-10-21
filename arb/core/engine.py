@@ -186,6 +186,16 @@ class TradingEngine:
             self.portfolio.apply_fill(f)
         return hedge + unwind
 
+    def close_group(self, group_id: str, snapshot: MarketSnapshot, tag: str) -> list[Fill]:
+        """Cancel the group's resting orders and close its positions now with taker orders."""
+        fills: list[Fill] = []
+        for o in [o for o in self.portfolio.open_orders if o.group_id == group_id]:
+            fills += self._cancel(o, snapshot, "forced_cancels")
+        intents = [OrderIntent(p.group_id, p.exchange, p.symbol, p.market, "sell" if p.qty > 0 else "buy",
+                               abs(p.qty), reduce_only=True, tag=tag)
+                   for p in self.portfolio.group_positions(group_id)]
+        return fills + self._execute(intents, snapshot)
+
     def _flatten_all(self) -> list[OrderIntent]:
         return [OrderIntent(p.group_id, p.exchange, p.symbol, p.market, "sell" if p.qty > 0 else "buy",
                             abs(p.qty), reduce_only=True, tag="kill_switch")

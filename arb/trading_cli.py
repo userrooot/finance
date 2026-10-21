@@ -115,3 +115,76 @@ async def paper(settings: Settings, name: str, cycles: int | None) -> None:
 
 def paper_report_cmd(settings: Settings, name: str) -> None:
     print(paper_report(Path(settings.paper.state_dir) / name, tax_rate=settings.tax.rate_on_gains))
+
+
+def validate_cmd(settings: Settings, name: str, source: str = "binance-vision") -> int:
+    """Paper-vs-backtest gate. Prints and saves the report; returns the exit code (0 PASS, 1 FAIL)."""
+    from arb.validate import validate
+
+    res = validate(settings, name, Path(settings.paper.state_dir) / name,
+                   Path(settings.storage.dir) / "history", source=source)
+    print(res.report)
+    print(f"Saved to {_save(res.report, f'validate_{name}.md')}")
+    return 0 if res.passed else 1
+
+
+LIVE_STATE_DIR = Path("data/live")
+
+
+def make_live_clients(exchanges: list[str]) -> dict:
+    """Authenticated sync ccxt clients from env keys (<EXCHANGE>_API_KEY / _API_SECRET / _API_PASSWORD)."""
+    import os
+
+    import ccxt
+
+    clients = {}
+    for ex in exchanges:
+        key, secret = os.environ.get(f"{ex.upper()}_API_KEY"), os.environ.get(f"{ex.upper()}_API_SECRET")
+        if not key or not secret:
+            raise SystemExit(f"{ex.upper()}_API_KEY / {ex.upper()}_API_SECRET are not set (see .env.example)")
+        cfg = {"apiKey": key, "secret": secret, "enableRateLimit": True}
+        if os.environ.get(f"{ex.upper()}_API_PASSWORD"):
+            cfg["password"] = os.environ[f"{ex.upper()}_API_PASSWORD"]
+        client = getattr(ccxt, ex)(cfg)
+        client.load_markets()
+        clients[ex] = client
+    return clients
+
+
+async def live(settings: Settings, name: str, cycles: int | None) -> None:
+    import os
+
+    from arb.live.runner import LiveTrader
+    from arb.live.safety import check_live_gate
+
+    from arb.live.safety import LiveSafetyError
+
+    try:
+        check_live_gate(settings, os.environ)  # before touching any API key
+    except LiveSafetyError as e:
+        raise SystemExit(str(e)) from None
+    strategy = build_strategy(name, settings)
+    exchanges = sorted({ex for ex, _, _ in strategy.requirements().quotes})
+    trader = LiveTrader(settings, strategy, CcxtSource(exchanges), make_live_clients(exchanges),
+                        LIVE_STATE_DIR / name, notifier=Notifier())
+    await trader.warm_up()
+    await trader.run(cycles)
+
+
+def flatten_all_cmd(settings: Settings, exchange: str, name: str, confirmed: bool) -> None:
+    import json
+
+    from arb.core.portfolio import Portfolio
+    from arb.live.flatten import flatten_all, make_broker
+    from arb.live.safety import check_key_permissions
+
+    if not confirmed:
+        raise SystemExit("flatten-all sends market orders with real money; rerun with --yes-really")
+    clients = make_live_clients([exchange])
+    check_key_permissions(exchange, clients[exchange])
+    state = LIVE_STATE_DIR / name / "state.json"
+    pf = Portfolio.from_dict(json.loads(state.read_text())["portfolio"]) if state.exists() else None
+    for line in flatten_all(exchange, clients[exchange], make_broker(clients, settings), pf):
+        print(line)
+    print("Done. The bot's saved state is unchanged: stop the live service before restarting it, "
+          "and reconcile (it pauses entries on mismatch).")

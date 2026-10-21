@@ -1,0 +1,17 @@
+# REAL MONEY. Requires ARB_LIVE_CONFIRM set in /opt/arb/.env and `live_trading: true` in config/settings.yaml,
+# plus the Phase 4 safety checks passing. Do not run alongside arb-paper.service on the same exchange keys.
+[Unit]
+Description=arb funding-carry LIVE trader
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=arb
+WorkingDirectory=/opt/arb
+EnvironmentFile=/opt/arb/.env
+ExecStart=/opt/arb/.venv/bin/python -m arb live --strategy funding_carry
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
