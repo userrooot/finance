@@ -185,3 +185,9 @@ def test_open_orders_persist():
     eng.step(snap(T0))
     pf2 = Portfolio.from_dict(pf.to_dict())
     assert pf2.open_orders == pf.open_orders and pf2.exec_stats == pf.exec_stats
+
+
+def test_malformed_maker_group_falls_back_to_taker():
+    eng, pf = make({0: [OrderIntent("x", "binance", SPOT, "spot", "buy", 0.001, exec_style="maker_first")]})
+    res = eng.step(snap(T0))
+    assert res.fills and not res.fills[0].maker and pf.open_orders == []

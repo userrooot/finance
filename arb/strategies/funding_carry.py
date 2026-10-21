@@ -82,21 +82,40 @@ class FundingCarry(Strategy):
 
         Conservative: assumes the position is held only max_hold_days, so costs are never
         spread over a longer holding period than the strategy would allow.
+
+        Taker mode: taker fee and full bid/ask spread on every leg, entry and exit. Maker mode
+        (cfg.execution == "maker"): the cfg.maker_leg leg pays the maker fee and no spread (it
+        rests at the touch); the other leg is the taker hedge, charged as in taker mode.
         """
         ex = self.cfg.exchange
         spot = snapshot.quote(ex, self.spot_symbol(base))
         perp = snapshot.quote(ex, self.perp_symbol(base))
         if spot is None or perp is None:
             return None
-        cost_frac = (2 * self.costs.fee_rate(ex, "spot") + 2 * self.costs.fee_rate(ex, "swap")
-                     + (spot.ask - spot.bid) / spot.mid + (perp.ask - perp.bid) / perp.mid)
+        spot_spread = (spot.ask - spot.bid) / spot.mid
+        perp_spread = (perp.ask - perp.bid) / perp.mid
+        spot_taker = perp_taker = True
+        if self.cfg.execution == "maker":
+            # the maker leg pays the maker fee and rests at the touch (no spread); the other leg
+            # is the taker hedge (taker fee + full spread)
+            if self.cfg.maker_leg == "perp":
+                perp_taker, perp_spread = False, 0.0
+            else:
+                spot_taker, spot_spread = False, 0.0
+        cost_frac = (2 * self.costs.fee_rate(ex, "spot", taker=spot_taker)
+                     + 2 * self.costs.fee_rate(ex, "swap", taker=perp_taker) + spot_spread + perp_spread)
         return gross_ann_pct - cost_frac * 365 / self.cfg.max_hold_days * 100
 
     def _on_base(self, base: str, snapshot: MarketSnapshot, portfolio: Portfolio) -> list[OrderIntent]:
         cfg, ex = self.cfg, self.cfg.exchange
         spot_sym, perp_sym = self.spot_symbol(base), self.perp_symbol(base)
         gross = self.gross_ann_pct(snapshot, base)
-        open_groups = portfolio.open_groups(f"fc:{ex}:{base}:")
+        prefix = f"fc:{ex}:{base}:"
+        open_groups = portfolio.open_groups(prefix)
+        maker = cfg.execution == "maker"
+        style = "maker_first" if maker else "taker"
+        spot_maker = maker and cfg.maker_leg == "spot"
+        perp_maker = maker and cfg.maker_leg == "perp"
 
         if open_groups:
             out: list[OrderIntent] = []
@@ -104,9 +123,17 @@ class FundingCarry(Strategy):
                 positions = portfolio.group_positions(gid)
                 reason = self._exit_reason(positions, gross, snapshot.ts_ms)
                 if reason:
+                    # An unbalanced group (e.g. one leg left after a leg failure) cannot be a two-leg
+                    # maker/hedge pair, so it is always closed with taker orders.
+                    m = maker and reason != "unbalanced"
                     out += [OrderIntent(gid, p.exchange, p.symbol, p.market, "sell" if p.qty > 0 else "buy",
-                                        abs(p.qty), reduce_only=True, tag="exit") for p in positions]
+                                        abs(p.qty), reduce_only=True, tag="exit",
+                                        exec_style="maker_first" if m else "taker",
+                                        maker=m and (spot_maker if p.market == "spot" else perp_maker))
+                            for p in positions]
             return out
+        if portfolio.pending_groups(prefix):  # an entry order is resting (maybe no position yet)
+            return []
 
         h = self.history.get((ex, perp_sym))
         if gross is None or h is None or len(h) < cfg.avg_window:
@@ -118,11 +145,13 @@ class FundingCarry(Strategy):
             return []
         qty = cfg.notional_usd / spot.ask
         gid = f"fc:{ex}:{base}:{snapshot.ts_ms}"
-        return [OrderIntent(gid, ex, spot_sym, "spot", "buy", qty, tag="entry"),
-                OrderIntent(gid, ex, perp_sym, "swap", "sell", qty, tag="entry")]
+        return [OrderIntent(gid, ex, spot_sym, "spot", "buy", qty, tag="entry", exec_style=style, maker=spot_maker),
+                OrderIntent(gid, ex, perp_sym, "swap", "sell", qty, tag="entry", exec_style=style, maker=perp_maker)]
 
     def _exit_reason(self, positions: list, gross: float | None, ts_ms: int) -> str | None:
         cfg = self.cfg
+        if not positions:
+            return None
         spot_qty = sum(p.qty for p in positions if p.market == "spot")
         perp_qty = sum(p.qty for p in positions if p.market == "swap")
         if spot_qty <= 0 or abs(spot_qty + perp_qty) > BALANCE_TOL * spot_qty:

@@ -57,8 +57,9 @@ class PaperTrader:
             self.portfolio = Portfolio(settings.capital.total_usd)
             self.risk = RiskManager(settings, settings.capital.total_usd)
         self._pending_events: list[str] = []
-        self.engine = TradingEngine(strategy, SimBroker(CostModel(settings), slippage_bps=0.0), self.portfolio,
-                                    self.risk, delay_execution=False, on_event=self._pending_events.append)
+        broker = SimBroker(CostModel(settings), slippage_bps=0.0, through_bps=settings.execution.through_bps)
+        self.engine = TradingEngine(strategy, broker, self.portfolio, self.risk, delay_execution=False,
+                                    on_event=self._pending_events.append, execution=settings.execution)
 
     # --- warm-up -------------------------------------------------------------------------
     async def warm_up(self) -> None:

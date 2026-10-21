@@ -79,6 +79,8 @@ def run_backtest(settings: Settings, strategy: Strategy, ohlcv: dict[Key, pd.Dat
     idx = {k: df.set_index("ts") for k, df in ohlcv.items()}
     opens = {k: d["open"].reindex(ts_all).to_numpy(float) for k, d in idx.items()}
     closes = {k: d["close"].reindex(ts_all).to_numpy(float) for k, d in idx.items()}
+    lows = {k: d["low"].reindex(ts_all).to_numpy(float) for k, d in idx.items()}
+    highs = {k: d["high"].reindex(ts_all).to_numpy(float) for k, d in idx.items()}
 
     fund = {k: (df["ts"].to_numpy(np.int64), df["rate"].to_numpy(float))
             for k, df in (funding or {}).items() if df is not None and len(df)}
@@ -86,14 +88,19 @@ def run_backtest(settings: Settings, strategy: Strategy, ohlcv: dict[Key, pd.Dat
 
     portfolio = Portfolio(initial)
     events: list[str] = []
-    engine = TradingEngine(strategy, SimBroker(CostModel(settings), cfg.slippage_bps), portfolio,
-                           RiskManager(settings, initial), delay_execution=True, on_event=events.append)
+    broker = SimBroker(CostModel(settings), cfg.slippage_bps, through_bps=settings.execution.through_bps)
+    engine = TradingEngine(strategy, broker, portfolio, RiskManager(settings, initial), delay_execution=True,
+                           on_event=events.append, execution=settings.execution)
     scratch = Portfolio(initial)  # warm-up: strategy sees an empty portfolio
     fills: list[Fill] = []
     rejections: list[tuple[OrderIntent, str]] = []
 
-    def quotes(px: dict[Key, np.ndarray], i: int, ts: int) -> dict[Key, Quote]:
-        return {k: Quote(v[i] * (1 - half), v[i] * (1 + half), ts) for k, v in px.items()}
+    def quotes(px: dict[Key, np.ndarray], i: int, ts: int, with_range: bool = False) -> dict[Key, Quote]:
+        # The close snapshot carries the bar's traded range: resting maker orders placed at the
+        # previous close fill against it (the range is after their placement, so no lookahead).
+        return {k: Quote(v[i] * (1 - half), v[i] * (1 + half), ts,
+                         low=float(lows[k][i]) if with_range else None,
+                         high=float(highs[k][i]) if with_range else None) for k, v in px.items()}
 
     prev_close: int | None = None
     for i in np.flatnonzero(keep):
@@ -105,7 +112,7 @@ def run_backtest(settings: Settings, strategy: Strategy, ohlcv: dict[Key, pd.Dat
             fills += res.fills
             rejections += res.rejected
         lo = ts if prev_close is None else prev_close
-        snap = MarketSnapshot(close_ts, quotes(closes, i, close_ts))
+        snap = MarketSnapshot(close_ts, quotes(closes, i, close_ts, with_range=True))
         for k, (fts, rates) in fund.items():
             j = int(np.searchsorted(fts, close_ts, side="right"))
             if j > 0:

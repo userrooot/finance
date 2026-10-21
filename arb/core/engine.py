@@ -79,7 +79,13 @@ class TradingEngine:
             intents = [i for i in self.strategy.on_snapshot(snapshot, self.portfolio) if i.group_id not in busy]
         approved, rejected = self.risk.check(intents, self.portfolio, snapshot)
         res.rejected += rejected
-        maker_groups = {i.group_id for i in approved if i.exec_style == "maker_first"}
+        maker_groups = set()
+        for gid in {i.group_id for i in approved if i.exec_style == "maker_first"}:
+            legs = [i for i in approved if i.group_id == gid]
+            if len(legs) == 2 and sum(l.maker for l in legs) == 1:
+                maker_groups.add(gid)
+            else:  # not a maker/hedge pair: execute it as taker rather than leave it stuck
+                self.on_event(f"maker_first group {gid} is not one maker leg + one hedge leg; using taker")
         for gid in maker_groups:
             self._place_maker([i for i in approved if i.group_id == gid], snapshot)
         approved = [i for i in approved if i.group_id not in maker_groups]
@@ -92,11 +98,7 @@ class TradingEngine:
 
     # --- maker-first execution -----------------------------------------------------------
     def _place_maker(self, legs: list[OrderIntent], snapshot: MarketSnapshot) -> None:
-        makers = [l for l in legs if l.maker]
-        if len(legs) != 2 or len(makers) != 1:
-            self.on_event(f"maker_first group {legs[0].group_id} needs exactly 2 legs with one maker leg; skipped")
-            return
-        m = makers[0]
+        m = next(l for l in legs if l.maker)
         h = next(l for l in legs if not l.maker)
         q = snapshot.quote(m.exchange, m.symbol)
         price = self.broker.maker_price(m.side, q)
