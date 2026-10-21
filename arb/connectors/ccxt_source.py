@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class CcxtSource:
     def __init__(self, exchanges: list[str], concurrency: int = 8):
         self.exchanges = exchanges
-        self._clients = {name: getattr(ccxt, name)({"enableRateLimit": True}) for name in exchanges}
+        self._clients = {name: getattr(ccxt, name)({"enableRateLimit": True, "aiohttp_trust_env": True}) for name in exchanges}
         self._markets: dict[str, dict[str, dict]] = {}
         self._sem = asyncio.Semaphore(concurrency)
 

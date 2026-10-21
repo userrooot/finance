@@ -1,6 +1,8 @@
 """CLI commands for Phase 2: history download, backtest, walk-forward and paper trading."""
 from __future__ import annotations
 
+import asyncio
+import math
 import time
 from pathlib import Path
 
@@ -37,9 +39,17 @@ def build_strategy(name: str, settings: Settings, params: dict | None = None) ->
     raise SystemExit(f"unknown strategy {name!r}; choose from {STRATEGIES}")
 
 
-async def fetch_history(settings: Settings, name: str, days: int) -> None:
+async def fetch_history(settings: Settings, name: str, days: int, source: str = "ccxt") -> None:
     req = build_strategy(name, settings).requirements()
     store = HistoryStore(Path(settings.storage.dir) / "history")
+    if source == "binance-vision":
+        from arb.backtest.binance_vision import import_history
+
+        counts = await asyncio.to_thread(import_history, store, list(req.quotes), list(req.funding),
+                                         math.ceil(days / 30), settings.backtest.timeframe)
+        for key, n in counts.items():
+            print(f"{key}: {n} rows")
+        return
     until = int(time.time() * 1000)
     since = until - days * 86_400_000
     for ex, sym, _ in req.quotes:

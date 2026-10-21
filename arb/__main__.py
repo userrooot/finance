@@ -95,6 +95,8 @@ def main() -> None:
     for p in (p_hist, p_bt, p_wf, p_paper, p_prep):
         p.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
     p_hist.add_argument("--days", type=int, default=365)
+    p_hist.add_argument("--source", choices=("ccxt", "binance-vision"), default="ccxt",
+                        help="binance-vision = public archive at data.binance.vision (binance only)")
     p_bt.add_argument("--days", type=int, help="only the last N days")
     p_wf.add_argument("--train-days", type=int, default=60)
     p_wf.add_argument("--test-days", type=int, default=30)
@@ -109,7 +111,7 @@ def main() -> None:
     if args.cmd == "scan":
         asyncio.run(scan_loop(settings, args.once, args.interval))
     elif args.cmd == "fetch-history":
-        asyncio.run(tc.fetch_history(settings, args.strategy, args.days))
+        asyncio.run(tc.fetch_history(settings, args.strategy, args.days, args.source))
     elif args.cmd == "backtest":
         tc.backtest(settings, args.strategy, args.days)
     elif args.cmd == "walk-forward":

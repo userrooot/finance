@@ -18,7 +18,7 @@ def safe_symbol(symbol: str) -> str:
 
 
 def _default_client(exchange: str) -> Any:
-    return getattr(ccxt_async, exchange)({"enableRateLimit": True})
+    return getattr(ccxt_async, exchange)({"enableRateLimit": True, "aiohttp_trust_env": True})  # honour HTTPS_PROXY
 
 
 def _merge(old: pd.DataFrame | None, new: pd.DataFrame) -> pd.DataFrame:
@@ -96,6 +96,10 @@ class HistoryStore:
         if df is None:
             raise FileNotFoundError(f"no cached funding for {exchange} {symbol} at {path}; run download first")
         return df[FUNDING_COLS]
+
+    def merge_save(self, path: Path, new: pd.DataFrame) -> pd.DataFrame:
+        """Merge `new` rows into the parquet at `path` (dedupe on ts, keep latest) and save."""
+        return self._save(path, _merge(self._read(path), new))
 
     # --- io ------------------------------------------------------------------------------
     @staticmethod
