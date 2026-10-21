@@ -3,7 +3,7 @@
 A Python tool that scans public market data on Binance, Bybit and OKX for crypto arbitrage
 opportunities, prices each one net of fees, slippage, transfer costs and tax, and writes the
 results to JSONL files and a daily markdown report. Phase 2 adds a backtester and a paper
-trader that share one trading engine.
+trader that share one trading engine. Phase 4 adds live trading behind a safety gate, off by default.
 
 ## 1. What it is
 
@@ -13,11 +13,13 @@ funding rates, OHLCV). It needs no API keys and places no orders.
 **Phase 2 is a backtester and paper trader.** Backtests use downloaded history; paper trading
 uses live public data with simulated fills. Neither sends orders to an exchange.
 
-**Live trading does not exist yet.** `live_trading: false` must stay false. `python -m arb`
-and the paper trader both refuse to run when it is `true`.
+**Phase 4 adds live trading, which is off by default.** `live_trading: false` is the default.
+`python -m arb live` refuses to start unless `live_trading: true`, the `ARB_LIVE_CONFIRM` phrase
+is set, and `live.max_order_usd` is positive. The paper trader refuses to run when
+`live_trading` is `true`. Read `docs/GO_LIVE.md` before you turn anything on.
 
-The `.env.example` exchange keys are not read by any code. The only environment variables
-read are the optional `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
+The exchange keys in `.env.example` are read only by `live` and `flatten-all`. The Telegram
+variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) are optional and used for alerts and commands.
 
 Scope: exchanges are `binance`, `bybit` and `okx`. The universe is 12 base assets against USDT
 (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, TON, SUI, LTC).
@@ -206,6 +208,19 @@ On Binance VIP-0 the spot maker fee equals the taker fee, so the perp leg is the
 maker leg. On real data, longer holding periods mattered more than maker orders.
 The default config now uses `execution: maker`, `maker_leg: perp` and `max_hold_days: 90`.
 
+## 5a. Phase 4: going live (real money)
+
+- `python -m arb live --strategy funding_carry` trades for real through ccxt (Binance and OKX).
+  It needs `live_trading: true`, `ARB_LIVE_CONFIRM=I_UNDERSTAND_REAL_MONEY`, and keys that
+  cannot withdraw. It reconciles against the exchange on start and every 5 minutes.
+- `python -m arb validate --strategy funding_carry` compares paper and backtest results. It must
+  print `GATE: PASS` before stage 1. The `live` command does not run it for you.
+- `python -m arb flatten-all --exchange binance --strategy funding_carry --yes-really` is the
+  manual emergency exit. It sends market orders.
+- `python -m arb tax-export --strategy funding_carry --year 2026 [--live]` writes CSVs for records.
+- Telegram commands, from the configured chat only: `/status`, `/pause`, `/resume`, `/kill`.
+- Start at $50 per order. The checklist, known gaps and stage rules are in `docs/GO_LIVE.md`.
+
 ## 6. How to judge results
 
 - **Trust walk-forward out-of-sample numbers over a single backtest.** A backtest uses
@@ -235,7 +250,9 @@ only covers what was fetched.
 
 All settings live in `config/settings.yaml`.
 
-- `live_trading`: must stay `false`. No live execution engine exists.
+- `live_trading`: `false` by default. Set `true` only for live trading (section 5a, `docs/GO_LIVE.md`).
+- `live`: per-order cap (`max_order_usd`), liquidation guard, reconcile interval and tolerance,
+  and the `gate` thresholds used by `validate`.
 - `capital.total_usd` (1100) and `capital.max_per_trade_usd` (300): sizing inputs for
   capacity and notional, and the per-leg cap in Phase 2. The starting figure is about INR 1 lakh.
 - `risk.max_daily_loss_pct` (2.0) and `risk.max_total_loss_pct` (10.0): enforced by the paper
@@ -265,11 +282,10 @@ python -m pytest -q
 - **Phase 1 (done):** read-only scanner over six strategies.
 - **Phase 2 (done):** backtester and paper trader on one shared engine, with the risk rules
   in section 5.
-- **Phase 3 (in progress):** maker-order funding carry is built and tested on real data;
-  next, paper trade it and pick the best edges from scanner, walk-forward and paper results.
-- **Phase 4:** validation, chaos tests, live execution behind the `live_trading` flag, and a
-  go-live checklist. Live trading stays off
-  until a strategy passes backtest, walk-forward testing and paper trading.
+- **Phase 3 (done):** maker-order funding carry is the default `funding_carry` setup.
+- **Phase 4 (built):** live path, safety checks, paper-vs-backtest validation and ops tools
+  (Telegram commands, emergency flatten, tax export). Going live waits for the paper gate
+  (`validate` must print `GATE: PASS`). See `docs/GO_LIVE.md`.
 
 ## 11. Disclaimer
 

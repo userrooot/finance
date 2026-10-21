@@ -22,7 +22,7 @@ ENV = {"ARB_LIVE_CONFIRM": LIVE_CONFIRM_PHRASE}
 
 def live_settings(**kw):
     s = load_settings().model_copy(update={"live_trading": True})
-    s.live = s.live.model_copy(update={"max_order_usd": 300.0, **kw})
+    s.live = s.live.model_copy(update={"max_order_usd": 300.0, "capital_usd": 400.0, **kw})
     return s
 
 
@@ -51,6 +51,7 @@ def exchange(cls=OkxKey):
     (live_settings(), {}, "ARB_LIVE_CONFIRM"),
     (live_settings(), {"ARB_LIVE_CONFIRM": "yes"}, "ARB_LIVE_CONFIRM"),
     (live_settings(max_order_usd=0), ENV, "max_order_usd"),
+    (live_settings(capital_usd=0), ENV, "capital_usd"),
 ])
 def test_live_gate_needs_all_three(settings, env, missing):
     with pytest.raises(LiveSafetyError, match=missing):
@@ -252,3 +253,59 @@ def test_flatten_all_closes_perps_and_bot_spot_in_capped_chunks():
     assert sum(o["amount"] for o in perp_orders) == pytest.approx(0.5)
     assert [o["side"] for o in ex.created if o["symbol"] == SPOT] == ["sell"]
     assert len(log) == 2
+
+
+def test_live_limits_use_funded_capital_not_config_capital(tmp_path):
+    t, ex, notes = make_trader(tmp_path)
+    assert t.portfolio.initial_cash == 400.0 and t.risk.state.initial_equity == 400.0
+    assert t.settings.capital.total_usd == 400.0  # gross exposure cap = 2 x funded capital
+    assert load_settings().capital.total_usd == 1100  # paper/backtest config untouched
+
+
+def test_validation_gate_requires_recent_pass(tmp_path):
+    import os
+
+    from arb.trading_cli import validation_gate_problem
+    from arb.validate import FAIL_LINE, PASS_LINE
+
+    assert "no validation report" in validation_gate_problem("funding_carry", tmp_path)
+    rep = tmp_path / "validate_funding_carry.md"
+    rep.write_text("report\n" + FAIL_LINE)
+    assert "did not PASS" in validation_gate_problem("funding_carry", tmp_path)
+    rep.write_text("report\n" + PASS_LINE)
+    assert validation_gate_problem("funding_carry", tmp_path) is None
+    old = rep.stat().st_mtime - 10 * 86400
+    os.utime(rep, (old, old))
+    assert "days old" in validation_gate_problem("funding_carry", tmp_path)
+
+
+def test_risk_reset_clears_kill_and_rebases(tmp_path, monkeypatch):
+    import json
+
+    from arb.trading_cli import risk_reset_cmd
+
+    d = tmp_path / "funding_carry"
+    d.mkdir()
+    pf = Portfolio(1000.0)
+    pf.equity_curve = [(1, 1000.0), (2, 880.0)]
+    (d / "state.json").write_text(json.dumps({"portfolio": pf.to_dict(), "risk": {
+        "initial_equity": 1000.0, "killed": True, "kill_reason": "total loss", "paused": True, "pause_reason": "x"}}))
+    with pytest.raises(SystemExit):
+        risk_reset_cmd("funding_carry", False, False, str(tmp_path))
+    risk_reset_cmd("funding_carry", False, True, str(tmp_path))
+    risk = json.loads((d / "state.json").read_text())["risk"]
+    assert not risk["killed"] and not risk["paused"] and risk["initial_equity"] == 880.0
+
+
+def test_dotenv_loader_does_not_override(tmp_path, monkeypatch):
+    import os
+
+    from arb.__main__ import load_dotenv
+
+    env = tmp_path / ".env"
+    env.write_text("# comment\nARB_T1=from_file\nARB_T2='quoted'\nARB_T3=\n")
+    monkeypatch.setenv("ARB_T1", "from_env")
+    monkeypatch.delenv("ARB_T2", raising=False)
+    monkeypatch.delenv("ARB_T3", raising=False)
+    load_dotenv(str(env))
+    assert os.environ["ARB_T1"] == "from_env" and os.environ["ARB_T2"] == "quoted" and "ARB_T3" not in os.environ

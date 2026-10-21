@@ -1,12 +1,13 @@
 """Checks that stand between the bot and real money.
 
 - check_live_gate: live needs live_trading: true, ARB_LIVE_CONFIRM set to the exact phrase,
-  and a positive live.max_order_usd cap.
+  a positive live.max_order_usd cap and live.capital_usd (the USDT actually funded, which the
+  daily-loss and kill-switch limits are measured against).
 - check_key_permissions: refuse to trade with an API key that can withdraw funds, and refuse
   when the exchange's key permissions cannot be verified.
 - reconcile: compare the exchange's balances/positions with the bot's portfolio. It only reports;
   the caller pauses new entries and alerts a human. It never trades to "fix" a mismatch.
-- liquidation_risks: short perps whose liquidation price is too close to the mark price.
+- liquidation_risks: perp positions (long or short) whose liquidation price is too close to the mark.
 """
 from __future__ import annotations
 
@@ -36,6 +37,8 @@ def check_live_gate(settings: Settings, env: Mapping[str, str]) -> None:
         problems.append(f"environment variable {LIVE_CONFIRM_ENV} is not set to {LIVE_CONFIRM_PHRASE}")
     if not settings.live.max_order_usd or settings.live.max_order_usd <= 0:
         problems.append("live.max_order_usd must be a positive cap")
+    if not settings.live.capital_usd or settings.live.capital_usd <= 0:
+        problems.append("live.capital_usd must be set to the USDT you funded (loss limits use it)")
     if problems:
         raise LiveSafetyError("live trading refused: " + "; ".join(problems))
 

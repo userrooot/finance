@@ -48,6 +48,9 @@ class LiveTrader(PaperTrader):
         self.clients = {ex: clients[ex] for ex in exchanges}
         self.broker = broker or LiveBroker(self.clients, CostModel(settings), settings.live.max_order_usd,
                                            settings.live.order_timeout_s)
+        # Live starting equity, exposure caps and loss limits use the money actually funded.
+        settings = settings.model_copy(update={
+            "capital": settings.capital.model_copy(update={"total_usd": settings.live.capital_usd})})
         super().__init__(settings, strategy, source, state_dir, notifier=notifier, clock=clock, sleep=sleep,
                          broker=self.broker)
         self.commands = commands if commands is not None else TelegramCommands()

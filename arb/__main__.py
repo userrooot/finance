@@ -75,7 +75,25 @@ async def scan_loop(settings: Settings, once: bool, interval_s: float) -> None:
         await source.close()
 
 
+def load_dotenv(path: str = ".env") -> None:
+    """Load KEY=VALUE lines from .env into the environment (existing variables win)."""
+    import os
+
+    try:
+        lines = open(path, encoding="utf-8").read().splitlines()
+    except FileNotFoundError:
+        return
+    for line in lines:
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            value = value.strip().strip('"').strip("'")
+            if value:
+                os.environ.setdefault(key.strip(), value)
+
+
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser(prog="arb")
     parser.add_argument("--config", default=str(DEFAULT_PATH))
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -112,6 +130,11 @@ def main() -> None:
     p_live = sub.add_parser("live", help="REAL MONEY: live trading behind the safety gate (see docs/GO_LIVE.md)")
     p_live.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
     p_live.add_argument("--cycles", type=int, help="stop after N cycles (default: run forever)")
+    p_live.add_argument("--skip-gate", action="store_true", help="start without a recent PASS from `validate`")
+    p_reset = sub.add_parser("risk-reset", help="clear a kill switch/pause in saved state (after human review)")
+    p_reset.add_argument("--strategy", choices=tc.STRATEGIES, required=True)
+    p_reset.add_argument("--live", action="store_true", help="the live state (data/live/<strategy>)")
+    p_reset.add_argument("--yes-really", action="store_true")
     p_flat = sub.add_parser("flatten-all", help="REAL MONEY: close all perp positions and the bot's spot on an exchange")
     p_flat.add_argument("--exchange", required=True)
     p_flat.add_argument("--strategy", choices=tc.STRATEGIES, required=True, help="whose live state lists the bot's spot")
@@ -135,7 +158,9 @@ def main() -> None:
                          "Use `python -m arb live`, or set live_trading: false.")
 
     if args.cmd == "live":
-        asyncio.run(tc.live(settings, args.strategy, args.cycles))
+        asyncio.run(tc.live(settings, args.strategy, args.cycles, args.skip_gate))
+    elif args.cmd == "risk-reset":
+        tc.risk_reset_cmd(args.strategy, args.live, args.yes_really, settings.paper.state_dir)
     elif args.cmd == "flatten-all":
         tc.flatten_all_cmd(settings, args.exchange, args.strategy, args.yes_really)
     elif args.cmd == "scan":

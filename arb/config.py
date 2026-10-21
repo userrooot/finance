@@ -135,8 +135,9 @@ class LiveGate(BaseModel):
 
 
 class LiveCfg(BaseModel):
+    capital_usd: float = 0.0             # USDT actually funded for live; loss limits use this. Required (> 0).
     max_order_usd: float = 50.0          # hard cap on every live order's notional
-    min_liq_distance_pct: float = 25.0   # close a short perp group when liquidation is closer than this
+    min_liq_distance_pct: float = 25.0   # close a perp group when liquidation is closer than this
     reconcile_every_s: float = 300.0
     reconcile_tolerance_pct: float = 2.0  # allowed exchange vs portfolio qty difference per symbol
     order_timeout_s: float = 20.0         # taker orders still open after this are cancelled

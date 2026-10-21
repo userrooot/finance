@@ -111,8 +111,9 @@ execution:
 
 # Live trading safety. Live needs live_trading: true AND env ARB_LIVE_CONFIRM=I_UNDERSTAND_REAL_MONEY.
 live:
+  capital_usd: 0                # REQUIRED for live: USDT you funded (spot + futures); 2%/10% limits use it
   max_order_usd: 50             # hard cap per order; raise to 300 only after the $50 stage goes well
-  min_liq_distance_pct: 25      # close a short perp group if liquidation is closer than this
+  min_liq_distance_pct: 25      # close a perp group if liquidation is closer than this
   reconcile_every_s: 300        # compare exchange balances/positions with the bot's state
   reconcile_tolerance_pct: 2
   order_timeout_s: 20

@@ -151,7 +151,7 @@ def make_live_clients(exchanges: list[str]) -> dict:
     return clients
 
 
-async def live(settings: Settings, name: str, cycles: int | None) -> None:
+async def live(settings: Settings, name: str, cycles: int | None, skip_gate: bool = False) -> None:
     import os
 
     from arb.live.runner import LiveTrader
@@ -163,6 +163,11 @@ async def live(settings: Settings, name: str, cycles: int | None) -> None:
         check_live_gate(settings, os.environ)  # before touching any API key
     except LiveSafetyError as e:
         raise SystemExit(str(e)) from None
+    if not skip_gate:
+        problem = validation_gate_problem(name)
+        if problem:
+            raise SystemExit(f"live trading refused: {problem}. Run `python -m arb validate --strategy {name}` "
+                             "after at least the configured paper period (or pass --skip-gate deliberately).")
     strategy = build_strategy(name, settings)
     exchanges = sorted({ex for ex, _, _ in strategy.requirements().quotes})
     trader = LiveTrader(settings, strategy, CcxtSource(exchanges), make_live_clients(exchanges),
@@ -188,3 +193,48 @@ def flatten_all_cmd(settings: Settings, exchange: str, name: str, confirmed: boo
         print(line)
     print("Done. The bot's saved state is unchanged: stop the live service before restarting it, "
           "and reconcile (it pauses entries on mismatch).")
+
+
+GATE_MAX_AGE_DAYS = 7
+
+
+def validation_gate_problem(name: str, reports_dir: Path = Path("reports"), now: float | None = None) -> str | None:
+    """None if a PASS validation report for this strategy exists and is recent, else the reason."""
+    import time
+
+    from arb.validate import PASS_LINE
+
+    path = reports_dir / f"validate_{name}.md"
+    if not path.exists():
+        return f"no validation report at {path}"
+    age_days = ((now or time.time()) - path.stat().st_mtime) / 86400
+    if age_days > GATE_MAX_AGE_DAYS:
+        return f"validation report is {age_days:.0f} days old (max {GATE_MAX_AGE_DAYS})"
+    if PASS_LINE not in path.read_text(encoding="utf-8"):
+        return "the last validation did not PASS"
+    return None
+
+
+def risk_reset_cmd(name: str, live_state: bool, confirmed: bool, paper_dir: str) -> None:
+    """Clear the kill switch / pause in a saved state after a human has reviewed what happened."""
+    import json
+    import os
+
+    if not confirmed:
+        raise SystemExit("risk-reset re-enables trading after a kill switch; rerun with --yes-really")
+    path = (LIVE_STATE_DIR if live_state else Path(paper_dir)) / name / "state.json"
+    if not path.exists():
+        raise SystemExit(f"no saved state at {path}")
+    state = json.loads(path.read_text())
+    risk = state["risk"]
+    print(f"before: killed={risk.get('killed')} ({risk.get('kill_reason')}), paused={risk.get('paused')}")
+    risk.update(killed=False, kill_reason="", paused=False, pause_reason="")
+    # The total-loss limit restarts from the current equity, so the kill switch cannot fire again at once.
+    equity = state["portfolio"]["equity_curve"][-1][1] if state["portfolio"].get("equity_curve") else None
+    if equity is not None:
+        risk["initial_equity"] = equity
+        print(f"total-loss limit now measured from equity {equity:,.2f}")
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(state))
+    os.replace(tmp, path)
+    print("risk state reset. Stop the bot before running this; start it again afterwards.")
