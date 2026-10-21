@@ -126,6 +126,23 @@ class ExecutionCfg(BaseModel):
     exit_timeout_s: float = 3600.0   # unfilled exit orders fall back to taker
 
 
+class LiveGate(BaseModel):
+    """Conditions paper trading must meet before going live (checked by `arb validate`)."""
+
+    min_paper_days: float = 14.0
+    max_pnl_gap_pct: float = 30.0  # paper vs backtest PnL difference, % of the larger absolute PnL
+    min_after_tax_pnl_usd: float = 0.0
+
+
+class LiveCfg(BaseModel):
+    max_order_usd: float = 50.0          # hard cap on every live order's notional
+    min_liq_distance_pct: float = 25.0   # close a short perp group when liquidation is closer than this
+    reconcile_every_s: float = 300.0
+    reconcile_tolerance_pct: float = 2.0  # allowed exchange vs portfolio qty difference per symbol
+    order_timeout_s: float = 20.0         # taker orders still open after this are cancelled
+    gate: LiveGate = LiveGate()
+
+
 class PaperCfg(BaseModel):
     interval_s: float = 30.0
     state_dir: str = "data/paper"
@@ -146,6 +163,7 @@ class Settings(BaseModel):
     backtest: BacktestCfg = BacktestCfg()
     paper: PaperCfg = PaperCfg()
     execution: ExecutionCfg = ExecutionCfg()
+    live: LiveCfg = LiveCfg()
 
 
 def load_settings(path: str | Path = DEFAULT_PATH) -> Settings:

@@ -68,7 +68,8 @@ class TradingEngine:
             self.on_event(e)
 
         if self.risk.state.killed and self.portfolio.open_orders:
-            self.portfolio.open_orders.clear()
+            for o in list(self.portfolio.open_orders):
+                res.fills += self._cancel(o, snapshot, "kill_cancels")
             res.events.append("kill switch: cancelled all resting orders")
         res.fills += self._work_resting(snapshot)
 
@@ -102,11 +103,15 @@ class TradingEngine:
         h = next(l for l in legs if not l.maker)
         q = snapshot.quote(m.exchange, m.symbol)
         price = self.broker.maker_price(m.side, q)
-        self.portfolio.open_orders.append(RestingOrder(
+        order = RestingOrder(
             f"{m.group_id}:{snapshot.ts_ms}", m.group_id, m.exchange, m.symbol, m.market, m.side, m.qty, price,
             snapshot.ts_ms, snapshot.ts_ms, m.reduce_only, m.tag,
             {"exchange": h.exchange, "symbol": h.symbol, "market": h.market, "side": h.side,
-             "reduce_only": h.reduce_only}))
+             "reduce_only": h.reduce_only})
+        # A live broker sends the order here; a post-only reject leaves it unplaced and the broker
+        # retries on the next check. Recording it first means a crash never loses track of it.
+        self.portfolio.open_orders.append(order)
+        self.broker.place_resting(order)
         self.portfolio.count("maker_orders")
 
     def _work_resting(self, snapshot: MarketSnapshot) -> list[Fill]:
@@ -115,11 +120,7 @@ class TradingEngine:
         for o in list(pf.open_orders):
             f = self.broker.check_resting(o, snapshot)
             if f is not None:
-                pf.apply_fill(f)
-                pf.count("maker_fills")
-                pf.count("maker_fill_wait_s", (snapshot.ts_ms - o.created_ms) / 1000)
-                o.qty -= f.qty
-                fills += [f] + self._hedge_maker_fill(o, f, snapshot)
+                fills += self._apply_maker_fill(o, f, snapshot)
             if o.qty <= EPS:
                 pf.open_orders.remove(o)
 
@@ -127,23 +128,44 @@ class TradingEngine:
             age_s = (snapshot.ts_ms - o.created_ms) / 1000
             q = snapshot.quote(o.exchange, o.symbol)
             if not o.reduce_only and (not self.risk.entries_allowed or age_s >= cfg.entry_timeout_s):
-                pf.open_orders.remove(o)
-                pf.count("entry_cancels")
+                fills += self._cancel(o, snapshot, "entry_cancels")
             elif o.reduce_only and age_s >= cfg.exit_timeout_s:
-                pf.open_orders.remove(o)
-                pf.count("exit_taker_fallbacks")
-                h = o.hedge
-                fills += self._execute([
-                    OrderIntent(o.group_id, o.exchange, o.symbol, o.market, o.side, o.qty, reduce_only=True, tag=o.tag),
-                    OrderIntent(o.group_id, h["exchange"], h["symbol"], h["market"], h["side"], o.qty,
-                                reduce_only=True, tag=o.tag)], snapshot)
+                fills += self._cancel(o, snapshot, "exit_taker_fallbacks")
+                if o.qty > EPS:
+                    h = o.hedge
+                    fills += self._execute([
+                        OrderIntent(o.group_id, o.exchange, o.symbol, o.market, o.side, o.qty, reduce_only=True, tag=o.tag),
+                        OrderIntent(o.group_id, h["exchange"], h["symbol"], h["market"], h["side"], o.qty,
+                                    reduce_only=True, tag=o.tag)], snapshot)
             elif q is not None:
                 touch = self.broker.maker_price(o.side, q)
                 if abs(touch / o.price - 1) * 1e4 > cfg.requote_bps:
+                    late = self.broker.replace_resting(o, touch)  # live: cancel + re-post
+                    if late is not None:
+                        fills += self._apply_maker_fill(o, late, snapshot)
                     o.price, o.placed_ms = touch, snapshot.ts_ms
                     pf.count("requotes")
+                    if o.qty <= EPS:
+                        pf.open_orders.remove(o)
         if fills:
             self.strategy.on_fills(fills)
+        return fills
+
+    def _apply_maker_fill(self, o: RestingOrder, f: Fill, snapshot: MarketSnapshot) -> list[Fill]:
+        pf = self.portfolio
+        pf.apply_fill(f)
+        pf.count("maker_fills")
+        pf.count("maker_fill_wait_s", (snapshot.ts_ms - o.created_ms) / 1000)
+        o.qty -= f.qty
+        return [f] + self._hedge_maker_fill(o, f, snapshot)
+
+    def _cancel(self, o: RestingOrder, snapshot: MarketSnapshot, stat: str) -> list[Fill]:
+        """Cancel a resting order. A fill that raced the cancel is still applied and hedged."""
+        late = self.broker.cancel_resting(o)
+        fills = self._apply_maker_fill(o, late, snapshot) if late is not None else []
+        if o in self.portfolio.open_orders:
+            self.portfolio.open_orders.remove(o)
+        self.portfolio.count(stat)
         return fills
 
     def _hedge_maker_fill(self, o: RestingOrder, maker_fill: Fill, snapshot: MarketSnapshot) -> list[Fill]:

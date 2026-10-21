@@ -107,6 +107,8 @@ class RestingOrder:
     reduce_only: bool
     tag: str
     hedge: dict  # the other leg: exchange, symbol, market, side, reduce_only
+    exchange_order_id: str | None = None  # live only: the exchange's id for the current placement
+    filled_on_exchange: float = 0.0  # live only: cumulative filled qty seen on the exchange order
 
 
 @dataclass(frozen=True)

@@ -26,9 +26,11 @@ WARMUP_FUNDING_DAYS = 14
 
 
 class PaperTrader:
+    LIVE = False  # LiveTrader sets this; paper must never be mistaken for live
+
     def __init__(self, settings: Settings, strategy: Strategy, source, state_dir: str | Path,
-                 notifier=None, clock: Callable[[], float] = time.time, sleep=asyncio.sleep):
-        if settings.live_trading:
+                 notifier=None, clock: Callable[[], float] = time.time, sleep=asyncio.sleep, broker=None):
+        if settings.live_trading and not self.LIVE:
             raise RuntimeError("PaperTrader refuses to run with live_trading=True")
         self.settings = settings
         self.strategy = strategy
@@ -57,7 +59,7 @@ class PaperTrader:
             self.portfolio = Portfolio(settings.capital.total_usd)
             self.risk = RiskManager(settings, settings.capital.total_usd)
         self._pending_events: list[str] = []
-        broker = SimBroker(CostModel(settings), slippage_bps=0.0, through_bps=settings.execution.through_bps)
+        broker = broker or SimBroker(CostModel(settings), slippage_bps=0.0, through_bps=settings.execution.through_bps)
         self.engine = TradingEngine(strategy, broker, self.portfolio, self.risk, delay_execution=False,
                                     on_event=self._pending_events.append, execution=settings.execution)
 
@@ -145,7 +147,7 @@ class PaperTrader:
             self._persist()
             return None
         self._pending_events.clear()
-        res = self.engine.step(snap)
+        res = await self._step(snap)
         self.last_ts = snap.ts_ms
         for f in res.fills:
             self._append("fills.jsonl", asdict(f))
@@ -158,6 +160,9 @@ class PaperTrader:
         self._persist()
         self._notify(res)
         return res
+
+    async def _step(self, snap: MarketSnapshot) -> StepResult:
+        return self.engine.step(snap)
 
     async def run(self, cycles: int | None = None) -> None:
         try:

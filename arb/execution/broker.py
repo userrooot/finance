@@ -27,12 +27,31 @@ class Broker(Protocol):
 
     def check_resting(self, order: RestingOrder, snapshot: MarketSnapshot) -> Fill | None: ...
 
+    def place_resting(self, order: RestingOrder) -> None: ...
+
+    def replace_resting(self, order: RestingOrder, new_price: float) -> Fill | None:
+        """Move a resting order to new_price; returns any fill that happened before the cancel."""
+
+    def cancel_resting(self, order: RestingOrder) -> Fill | None:
+        """Cancel a resting order; returns any fill that raced the cancel."""
+
 
 class SimBroker:
     def __init__(self, costs: CostModel, slippage_bps: float = 0.0, through_bps: float = 1.0):
         self.costs = costs
         self.slippage = slippage_bps / 1e4
         self.through = through_bps / 1e4
+
+    # Simulated resting orders live only in the portfolio, so placing, moving and cancelling
+    # them needs no exchange call.
+    def place_resting(self, order: RestingOrder) -> None:
+        pass
+
+    def replace_resting(self, order: RestingOrder, new_price: float) -> Fill | None:
+        return None
+
+    def cancel_resting(self, order: RestingOrder) -> Fill | None:
+        return None
 
     @staticmethod
     def maker_price(side: str, quote: Quote) -> float:

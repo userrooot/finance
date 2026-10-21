@@ -109,6 +109,18 @@ execution:
   entry_timeout_s: 21600        # cancel unfilled entries after 6h (no trade is fine)
   exit_timeout_s: 7200          # unfilled exits switch to taker after 2h so exits always complete
 
+# Live trading safety. Live needs live_trading: true AND env ARB_LIVE_CONFIRM=I_UNDERSTAND_REAL_MONEY.
+live:
+  max_order_usd: 50             # hard cap per order; raise to 300 only after the $50 stage goes well
+  min_liq_distance_pct: 25      # close a short perp group if liquidation is closer than this
+  reconcile_every_s: 300        # compare exchange balances/positions with the bot's state
+  reconcile_tolerance_pct: 2
+  order_timeout_s: 20
+  gate:                         # `python -m arb validate` must PASS before going live
+    min_paper_days: 14
+    max_pnl_gap_pct: 30
+    min_after_tax_pnl_usd: 0
+
 paper:
   interval_s: 30
   state_dir: data/paper
