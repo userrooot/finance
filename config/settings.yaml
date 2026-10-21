@@ -82,9 +82,11 @@ strategies:
     entry_annualized_pct: 15    # enter when trailing avg funding, net of round-trip costs, beats this
     exit_annualized_pct: 3      # exit when trailing avg funding falls below this
     avg_window: 21              # number of past funding settlements averaged (21 x 8h = 7 days)
-    max_hold_days: 30
-    execution: taker            # taker | maker (post-only maker leg + taker hedge, see `execution` below)
-    maker_leg: perp             # which leg rests as the maker order
+    max_hold_days: 90           # longer holds = fewer round trips and fewer taxable trades
+    execution: maker            # taker | maker (post-only maker leg + taker hedge, see `execution` below)
+    maker_leg: perp             # perp: Binance spot maker fee equals taker, so the perp leg is the useful maker leg
+    # Maker perp + 90-day hold was the best setup on 13 months of real Binance data (in-sample);
+    # paper trade it before trusting it.
   stat_arb:
     exchange: binance
     pairs: [[ETH, BTC]]         # (y, x); pick pairs from Phase 1 stat_arb reports / walk-forward

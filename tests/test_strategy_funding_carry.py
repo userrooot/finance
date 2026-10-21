@@ -20,7 +20,9 @@ HIGH, LOW = 0.0003, 0.00001  # per 8h: ~33% / ~1% annualised
 
 def build(**cfg_updates):
     settings = load_settings()
-    cfg = settings.strategies.funding_carry.model_copy(update={"bases": ["BTC"], "avg_window": 3, **cfg_updates})
+    # pin taker / 30-day hold so these tests don't depend on the YAML defaults
+    cfg = settings.strategies.funding_carry.model_copy(update={
+        "bases": ["BTC"], "avg_window": 3, "execution": "taker", "max_hold_days": 30, **cfg_updates})
     costs = CostModel(settings)
     pf = Portfolio(1000.0)
     strat = FundingCarry(cfg, costs)

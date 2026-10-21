@@ -204,6 +204,7 @@ group always closes with taker orders. Backtests fill maker orders against the n
 high/low; paper trading fills them when the other side of the book crosses through.
 On Binance VIP-0 the spot maker fee equals the taker fee, so the perp leg is the useful
 maker leg. On real data, longer holding periods mattered more than maker orders.
+The default config now uses `execution: maker`, `maker_leg: perp` and `max_hold_days: 90`.
 
 ## 6. How to judge results
 
