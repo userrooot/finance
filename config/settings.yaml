@@ -83,6 +83,8 @@ strategies:
     exit_annualized_pct: 3      # exit when trailing avg funding falls below this
     avg_window: 21              # number of past funding settlements averaged (21 x 8h = 7 days)
     max_hold_days: 30
+    execution: taker            # taker | maker (post-only maker leg + taker hedge, see `execution` below)
+    maker_leg: perp             # which leg rests as the maker order
   stat_arb:
     exchange: binance
     pairs: [[ETH, BTC]]         # (y, x); pick pairs from Phase 1 stat_arb reports / walk-forward
@@ -97,6 +99,13 @@ backtest:
   timeframe: 1h
   spread_bps: 2.0               # modelled full bid/ask spread around the bar close
   slippage_bps: 2.0             # extra adverse slippage per fill
+
+# Maker (post-only) order handling for strategies with execution: maker.
+execution:
+  requote_bps: 2                # re-post at the new touch when price moves this far away
+  through_bps: 1                # a resting order fills only when price trades this far through it
+  entry_timeout_s: 21600        # cancel unfilled entries after 6h (no trade is fine)
+  exit_timeout_s: 7200          # unfilled exits switch to taker after 2h so exits always complete
 
 paper:
   interval_s: 30

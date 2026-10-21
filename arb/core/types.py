@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from arb.models import MarketType, OrderBook, Side
 
@@ -16,6 +17,8 @@ class Quote:
     bid_size: float = float("inf")  # base units available at the top level
     ask_size: float = float("inf")
     book: OrderBook | None = None  # full depth when available (paper/live)
+    low: float | None = None  # traded range since the previous snapshot (backtest bars)
+    high: float | None = None
 
     @property
     def mid(self) -> float:
@@ -60,6 +63,10 @@ class OrderIntent:
     qty: float  # base units, > 0
     reduce_only: bool = False
     tag: str = ""
+    # exec_style "maker_first": the leg with maker=True rests as a post-only limit at the touch;
+    # the group's other leg is sent as a taker hedge for exactly the qty the maker leg fills.
+    exec_style: Literal["taker", "maker_first"] = "taker"
+    maker: bool = False
 
 
 @dataclass(frozen=True)
@@ -76,10 +83,30 @@ class Fill:
     requested_qty: float
     reduce_only: bool = False
     tag: str = ""
+    maker: bool = False  # filled as a resting post-only order (maker fee, no spread)
 
     @property
     def signed_qty(self) -> float:
         return self.qty if self.side == "buy" else -self.qty
+
+
+@dataclass
+class RestingOrder:
+    """A post-only limit order (the maker leg of a maker_first group) waiting for a fill."""
+
+    order_id: str
+    group_id: str
+    exchange: str
+    symbol: str
+    market: MarketType
+    side: Side
+    qty: float  # remaining base units
+    price: float
+    created_ms: int  # first placement; timeouts count from here
+    placed_ms: int  # last (re)placement
+    reduce_only: bool
+    tag: str
+    hedge: dict  # the other leg: exchange, symbol, market, side, reduce_only
 
 
 @dataclass(frozen=True)

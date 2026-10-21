@@ -62,7 +62,9 @@ class RiskManager:
             groups[i.group_id].append(i)
         approved: list[OrderIntent] = []
         rejected: list[tuple[OrderIntent, str]] = []
-        exposure = portfolio.gross_exposure(snapshot)
+        # resting entry orders will add both legs once they fill
+        exposure = portfolio.gross_exposure(snapshot) + sum(
+            2 * o.qty * o.price for o in portfolio.open_orders if not o.reduce_only)
         for legs in groups.values():
             reason = self._check_group(legs, portfolio, snapshot, exposure)
             if reason:

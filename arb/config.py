@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -90,6 +91,8 @@ class FundingCarryStrategyCfg(BaseModel):
     exit_annualized_pct: float = 3.0
     avg_window: int = 21
     max_hold_days: float = 30.0
+    execution: Literal["taker", "maker"] = "taker"
+    maker_leg: Literal["perp", "spot"] = "perp"
 
 
 class StatArbStrategyCfg(BaseModel):
@@ -114,6 +117,15 @@ class BacktestCfg(BaseModel):
     slippage_bps: float = 2.0
 
 
+class ExecutionCfg(BaseModel):
+    """Maker (post-only limit) order handling, used by strategies with execution: maker."""
+
+    requote_bps: float = 2.0        # re-post when the touch moves this far from our price
+    through_bps: float = 1.0        # a resting order fills only when price trades this far through it
+    entry_timeout_s: float = 3600.0  # unfilled entry orders are cancelled
+    exit_timeout_s: float = 3600.0   # unfilled exit orders fall back to taker
+
+
 class PaperCfg(BaseModel):
     interval_s: float = 30.0
     state_dir: str = "data/paper"
@@ -133,6 +145,7 @@ class Settings(BaseModel):
     strategies: Strategies = Strategies()
     backtest: BacktestCfg = BacktestCfg()
     paper: PaperCfg = PaperCfg()
+    execution: ExecutionCfg = ExecutionCfg()
 
 
 def load_settings(path: str | Path = DEFAULT_PATH) -> Settings:

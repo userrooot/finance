@@ -5,23 +5,56 @@ Fill model:
 - Without one (backtest bars): top of book (bid/ask already include the modelled spread),
   limited by bid_size/ask_size.
 Plus `slippage_bps` adverse to the order, and taker fees from the CostModel.
+
+Resting post-only orders (maker legs) are priced at the touch and fill only when the market
+trades `through_bps` beyond their price, a conservative stand-in for queue position: touching
+the price is not enough. The traded range is the quote's low/high when given (backtest bars),
+else the opposite side of the book crossing through (paper). Maker fills pay the maker fee
+and no spread or slippage.
 """
 from __future__ import annotations
 
 from typing import Protocol
 
-from arb.core.types import Fill, MarketSnapshot, OrderIntent
+from arb.core.types import Fill, MarketSnapshot, OrderIntent, Quote, RestingOrder
 from arb.costs import CostModel, walk_book
 
 
 class Broker(Protocol):
     def execute(self, intents: list[OrderIntent], snapshot: MarketSnapshot) -> list[Fill]: ...
 
+    def maker_price(self, side: str, quote: Quote) -> float: ...
+
+    def check_resting(self, order: RestingOrder, snapshot: MarketSnapshot) -> Fill | None: ...
+
 
 class SimBroker:
-    def __init__(self, costs: CostModel, slippage_bps: float = 0.0):
+    def __init__(self, costs: CostModel, slippage_bps: float = 0.0, through_bps: float = 1.0):
         self.costs = costs
         self.slippage = slippage_bps / 1e4
+        self.through = through_bps / 1e4
+
+    @staticmethod
+    def maker_price(side: str, quote: Quote) -> float:
+        """Post-only price at the touch: join the bid to buy, the ask to sell (never crosses)."""
+        return quote.bid if side == "buy" else quote.ask
+
+    def check_resting(self, order: RestingOrder, snapshot: MarketSnapshot) -> Fill | None:
+        q = snapshot.quote(order.exchange, order.symbol)
+        if q is None or order.qty <= 0:
+            return None
+        if order.side == "buy":
+            low = q.low if q.low is not None else q.ask
+            filled = low <= order.price * (1 - self.through)
+        else:
+            high = q.high if q.high is not None else q.bid
+            filled = high >= order.price * (1 + self.through)
+        if not filled:
+            return None
+        fee = self.costs.fee(order.exchange, order.market, order.qty * order.price, taker=False)
+        return Fill(order.group_id, order.exchange, order.symbol, order.market, order.side, order.qty,
+                    order.price, fee, snapshot.ts_ms, requested_qty=order.qty,
+                    reduce_only=order.reduce_only, tag=order.tag, maker=True)
 
     def execute(self, intents: list[OrderIntent], snapshot: MarketSnapshot) -> list[Fill]:
         return [self._fill(i, snapshot) for i in intents]

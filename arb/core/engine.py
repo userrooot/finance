@@ -5,6 +5,14 @@ when the kill switch is on) -> risk checks -> execute -> account fills -> record
 
 With delay_execution=True (backtests) approved intents are queued and executed on the next
 call to execute_pending(), e.g. at the next bar's open, so decisions never see their own fill price.
+
+Maker-first groups (OrderIntent.exec_style == "maker_first"): the maker leg rests as a post-only
+limit at the touch and the other leg is sent as a taker hedge for exactly what the maker leg
+fills, in the same step, so the position is never left unhedged. Each step the engine first
+checks resting orders for fills (against the market since they were placed), then re-pegs ones
+the touch has moved away from, cancels entries that time out (or when entries are halted),
+and turns timed-out exits into taker orders so exits always complete. The kill switch cancels
+every resting order and flattens with taker orders.
 """
 from __future__ import annotations
 
@@ -15,7 +23,8 @@ from typing import Callable
 
 from arb.core.portfolio import EPS, Portfolio
 from arb.core.risk import RiskManager
-from arb.core.types import Fill, MarketSnapshot, OrderIntent
+from arb.config import ExecutionCfg
+from arb.core.types import Fill, MarketSnapshot, OrderIntent, RestingOrder
 from arb.execution.broker import Broker
 from arb.strategies.base import Strategy
 
@@ -33,8 +42,10 @@ class StepResult:
 
 class TradingEngine:
     def __init__(self, strategy: Strategy, broker: Broker, portfolio: Portfolio, risk: RiskManager,
-                 delay_execution: bool = False, on_event: Callable[[str], None] | None = None):
+                 delay_execution: bool = False, on_event: Callable[[str], None] | None = None,
+                 execution: ExecutionCfg | None = None):
         self.strategy = strategy
+        self.execution = execution or ExecutionCfg()
         self.broker = broker
         self.portfolio = portfolio
         self.risk = risk
@@ -56,15 +67,100 @@ class TradingEngine:
         for e in res.events:
             self.on_event(e)
 
-        intents = self._flatten_all() if self.risk.state.killed else self.strategy.on_snapshot(snapshot, self.portfolio)
+        if self.risk.state.killed and self.portfolio.open_orders:
+            self.portfolio.open_orders.clear()
+            res.events.append("kill switch: cancelled all resting orders")
+        res.fills += self._work_resting(snapshot)
+
+        if self.risk.state.killed:
+            intents = self._flatten_all()
+        else:
+            busy = {o.group_id for o in self.portfolio.open_orders}
+            intents = [i for i in self.strategy.on_snapshot(snapshot, self.portfolio) if i.group_id not in busy]
         approved, rejected = self.risk.check(intents, self.portfolio, snapshot)
         res.rejected += rejected
+        maker_groups = {i.group_id for i in approved if i.exec_style == "maker_first"}
+        for gid in maker_groups:
+            self._place_maker([i for i in approved if i.group_id == gid], snapshot)
+        approved = [i for i in approved if i.group_id not in maker_groups]
         if self.delay_execution:
             self.pending = approved
         else:
             res.fills += self._execute(approved, snapshot)
         res.equity = self.portfolio.record_equity(snapshot)
         return res
+
+    # --- maker-first execution -----------------------------------------------------------
+    def _place_maker(self, legs: list[OrderIntent], snapshot: MarketSnapshot) -> None:
+        makers = [l for l in legs if l.maker]
+        if len(legs) != 2 or len(makers) != 1:
+            self.on_event(f"maker_first group {legs[0].group_id} needs exactly 2 legs with one maker leg; skipped")
+            return
+        m = makers[0]
+        h = next(l for l in legs if not l.maker)
+        q = snapshot.quote(m.exchange, m.symbol)
+        price = self.broker.maker_price(m.side, q)
+        self.portfolio.open_orders.append(RestingOrder(
+            f"{m.group_id}:{snapshot.ts_ms}", m.group_id, m.exchange, m.symbol, m.market, m.side, m.qty, price,
+            snapshot.ts_ms, snapshot.ts_ms, m.reduce_only, m.tag,
+            {"exchange": h.exchange, "symbol": h.symbol, "market": h.market, "side": h.side,
+             "reduce_only": h.reduce_only}))
+        self.portfolio.count("maker_orders")
+
+    def _work_resting(self, snapshot: MarketSnapshot) -> list[Fill]:
+        pf, cfg = self.portfolio, self.execution
+        fills: list[Fill] = []
+        for o in list(pf.open_orders):
+            f = self.broker.check_resting(o, snapshot)
+            if f is not None:
+                pf.apply_fill(f)
+                pf.count("maker_fills")
+                pf.count("maker_fill_wait_s", (snapshot.ts_ms - o.created_ms) / 1000)
+                o.qty -= f.qty
+                fills += [f] + self._hedge_maker_fill(o, f, snapshot)
+            if o.qty <= EPS:
+                pf.open_orders.remove(o)
+
+        for o in list(pf.open_orders):
+            age_s = (snapshot.ts_ms - o.created_ms) / 1000
+            q = snapshot.quote(o.exchange, o.symbol)
+            if not o.reduce_only and (not self.risk.entries_allowed or age_s >= cfg.entry_timeout_s):
+                pf.open_orders.remove(o)
+                pf.count("entry_cancels")
+            elif o.reduce_only and age_s >= cfg.exit_timeout_s:
+                pf.open_orders.remove(o)
+                pf.count("exit_taker_fallbacks")
+                h = o.hedge
+                fills += self._execute([
+                    OrderIntent(o.group_id, o.exchange, o.symbol, o.market, o.side, o.qty, reduce_only=True, tag=o.tag),
+                    OrderIntent(o.group_id, h["exchange"], h["symbol"], h["market"], h["side"], o.qty,
+                                reduce_only=True, tag=o.tag)], snapshot)
+            elif q is not None:
+                touch = self.broker.maker_price(o.side, q)
+                if abs(touch / o.price - 1) * 1e4 > cfg.requote_bps:
+                    o.price, o.placed_ms = touch, snapshot.ts_ms
+                    pf.count("requotes")
+        if fills:
+            self.strategy.on_fills(fills)
+        return fills
+
+    def _hedge_maker_fill(self, o: RestingOrder, maker_fill: Fill, snapshot: MarketSnapshot) -> list[Fill]:
+        """Taker-hedge exactly the maker fill; if the hedge under-fills, unwind the excess maker qty."""
+        h = o.hedge
+        hedge = self.broker.execute([OrderIntent(o.group_id, h["exchange"], h["symbol"], h["market"], h["side"],
+                                                 maker_fill.qty, reduce_only=h["reduce_only"], tag=o.tag)], snapshot)
+        for f in hedge:
+            self.portfolio.apply_fill(f)
+        short = maker_fill.qty - sum(f.qty for f in hedge)
+        if short <= EPS:
+            return hedge
+        self.on_event(f"hedge under-filled in {o.group_id} by {short:.8f}; unwinding the maker leg excess")
+        unwind = self.broker.execute([OrderIntent(o.group_id, o.exchange, o.symbol, o.market,
+                                                  "sell" if o.side == "buy" else "buy", short,
+                                                  reduce_only=True, tag="leg_unwind")], snapshot)
+        for f in unwind:
+            self.portfolio.apply_fill(f)
+        return hedge + unwind
 
     def _flatten_all(self) -> list[OrderIntent]:
         return [OrderIntent(p.group_id, p.exchange, p.symbol, p.market, "sell" if p.qty > 0 else "buy",

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from arb.core.types import Fill, FundingEvent, Key, MarketSnapshot
+from arb.core.types import Fill, FundingEvent, Key, MarketSnapshot, RestingOrder
 
 EPS = 1e-12
 PosKey = tuple[str, str, str, str]  # (group_id, exchange, symbol, market)
@@ -59,6 +59,8 @@ class Portfolio:
         self.fees_paid = 0.0
         self.funding_received = 0.0
         self.traded_notional = 0.0
+        self.open_orders: list[RestingOrder] = []
+        self.exec_stats: dict[str, float] = {}
         self._groups: dict[str, _GroupStats] = {}
 
     # --- updates -------------------------------------------------------------------------
@@ -124,6 +126,13 @@ class Portfolio:
     def open_groups(self, prefix: str = "") -> list[str]:
         return sorted({p.group_id for p in self.positions.values() if p.group_id.startswith(prefix)})
 
+    def pending_groups(self, prefix: str = "") -> list[str]:
+        """Groups with a resting maker order (an entry may have no position yet)."""
+        return sorted({o.group_id for o in self.open_orders if o.group_id.startswith(prefix)})
+
+    def count(self, stat: str, n: float = 1.0) -> None:
+        self.exec_stats[stat] = self.exec_stats.get(stat, 0.0) + n
+
     def group_positions(self, group_id: str) -> list[Position]:
         return [p for p in self.positions.values() if p.group_id == group_id]
 
@@ -155,6 +164,8 @@ class Portfolio:
             "equity_curve": self.equity_curve,
             "fees_paid": self.fees_paid, "funding_received": self.funding_received,
             "traded_notional": self.traded_notional,
+            "open_orders": [asdict(o) for o in self.open_orders],
+            "exec_stats": self.exec_stats,
             "groups": {gid: asdict(g) for gid, g in self._groups.items()},
         }
 
@@ -170,5 +181,7 @@ class Portfolio:
         p.equity_curve = [tuple(x) for x in d["equity_curve"]]
         p.fees_paid, p.funding_received = d["fees_paid"], d["funding_received"]
         p.traded_notional = d["traded_notional"]
+        p.open_orders = [RestingOrder(**o) for o in d.get("open_orders", [])]
+        p.exec_stats = dict(d.get("exec_stats", {}))
         p._groups = {gid: _GroupStats(**g) for gid, g in d["groups"].items()}
         return p
