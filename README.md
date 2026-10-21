@@ -187,6 +187,24 @@ python -m arb paper-report --strategy funding_carry
 **Telegram alerts are optional**: set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Without
 them, notifications go to the log.
 
+### Maker orders (Phase 3)
+
+Set `strategies.funding_carry.execution: maker` to rest one leg (`maker_leg`, default `perp`)
+as a post-only limit order at the best price, with the other leg sent as a taker hedge for
+exactly what fills, in the same step. Settings live under `execution` in `settings.yaml`:
+
+- `through_bps`: a resting order fills only when price trades this far through it (touching
+  is not enough), a conservative stand-in for queue position.
+- `requote_bps`: re-post at the new best price when the market moves this far away.
+- `entry_timeout_s`: unfilled entries are cancelled. No trade is a fine outcome.
+- `exit_timeout_s`: unfilled exits switch to taker orders, so exits always complete.
+
+The kill switch cancels all resting orders and flattens with taker orders; an unbalanced
+group always closes with taker orders. Backtests fill maker orders against the next bar's
+high/low; paper trading fills them when the other side of the book crosses through.
+On Binance VIP-0 the spot maker fee equals the taker fee, so the perp leg is the useful
+maker leg. On real data, longer holding periods mattered more than maker orders.
+
 ## 6. How to judge results
 
 - **Trust walk-forward out-of-sample numbers over a single backtest.** A backtest uses
@@ -246,8 +264,8 @@ python -m pytest -q
 - **Phase 1 (done):** read-only scanner over six strategies.
 - **Phase 2 (done):** backtester and paper trader on one shared engine, with the risk rules
   in section 5.
-- **Phase 3:** pick the two or three best edges, using real scanner reports, walk-forward
-  results and paper trading results.
+- **Phase 3 (in progress):** maker-order funding carry is built and tested on real data;
+  next, paper trade it and pick the best edges from scanner, walk-forward and paper results.
 - **Phase 4:** validation, chaos tests, live execution behind the `live_trading` flag, and a
   go-live checklist. Live trading stays off
   until a strategy passes backtest, walk-forward testing and paper trading.
