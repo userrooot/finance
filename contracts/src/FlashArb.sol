@@ -266,9 +266,9 @@ contract FlashArb is IFlashLoanSimpleReceiverMinimal, Ownable2Step, Pausable, Re
         (uint256 balBefore, Route memory route) = abi.decode(params, (uint256, Route));
         if (asset != route.loanToken || amount != route.loanAmount) revert LoanMismatch();
 
-        uint256 received = IERC20(asset).balanceOf(address(this));
-        if (received != balBefore + amount) {
-            revert BalanceDeltaMismatch(LOAN_STEP, asset, balBefore + amount, received);
+        uint256 loanBal = IERC20(asset).balanceOf(address(this));
+        if (loanBal != balBefore + amount) {
+            revert BalanceDeltaMismatch(LOAN_STEP, asset, balBefore + amount, loanBal);
         }
 
         uint256 x = amount;

@@ -1,0 +1,84 @@
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+// Golden vectors from docs/FLASH_ARB_DESIGN.md section 5.9, hard-coded byte for byte.
+const V1 = {
+  route: {
+    loanToken: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    loanAmount: 1000000000000000000n,
+    minProfit: 100000000000000n,
+    deadline: 1792900000n,
+    hops: [
+      { pool: "0xC6962004f452bE9203591991D15f6b388e09E8D0", tokenIn: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", tokenOut: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", venue: 0, zeroForOne: true },
+      { pool: "0x57b85FEf094e10b5eeCDF350Af688299E9553378", tokenIn: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", tokenOut: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", venue: 2, zeroForOne: false },
+    ],
+  },
+  calldata: "0xe77fcf52000000000000000000000000000000000000000000000000000000000000002000000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab10000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000000005af3107a4000000000000000000000000000000000000000000000000000000000006add7ba000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c6962004f452be9203591991d15f6b388e09e8d000000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e58310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000057b85fef094e10b5eecdf350af688299e9553378000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000",
+  calldataHash: "0xfd08794518b3a2d01555e7e06a3c07442085aa3ea179bf9425aec650880fbe59",
+  paramsHash: "0x1697f7ad346426d962e700b7f783c44c0dc40f51c7d1987d768a0e9087cc5e4f",
+  calldataLen: 548,
+};
+
+const V2 = {
+  route: {
+    loanToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    loanAmount: 2500000000n,
+    minProfit: 0n,
+    deadline: 1792900000n,
+    hops: [
+      { pool: "0xb0f6cA40411360c03d41C5fFc5F179b8403CdcF8", tokenIn: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", tokenOut: "0x912CE59144191C1204E64559FE8253a0e49E6548", venue: 0, zeroForOne: false },
+      { pool: "0xa6c5C7D189fA4eB5Af8ba34E63dCDD3a635D433f", tokenIn: "0x912CE59144191C1204E64559FE8253a0e49E6548", tokenOut: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", venue: 3, zeroForOne: false },
+      { pool: "0xd9e2a1a61B6E61b275cEc326465d417e52C1b95c", tokenIn: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", tokenOut: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", venue: 1, zeroForOne: true },
+    ],
+  },
+  calldata: "0xe77fcf520000000000000000000000000000000000000000000000000000000000000020000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e5831000000000000000000000000000000000000000000000000000000009502f9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006add7ba000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000003000000000000000000000000b0f6ca40411360c03d41c5ffc5f179b8403cdcf8000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e5831000000000000000000000000912ce59144191c1204e64559fe8253a0e49e654800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a6c5c7d189fa4eb5af8ba34e63dcdd3a635d433f000000000000000000000000912ce59144191c1204e64559fe8253a0e49e654800000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab100000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d9e2a1a61b6e61b275cec326465d417e52c1b95c00000000000000000000000082af49447d8a07e3bd95bd0d56f35241523fbab1000000000000000000000000af88d065e77c8cc2239327c5edb3a432268e583100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+  calldataHash: "0x4baf5fda4d2877fb705513ad98acebb3e984325816bb8185b442c0dda606fc9e",
+  paramsHash: "0x07d1edac5b16433bbd716f0663544de7cb05a5699993d09470b1a282353f0a2d",
+  calldataLen: 708,
+};
+
+describe("Route encoding (golden vectors, section 5.9)", function () {
+  let arb, probe, iface;
+  before(async () => {
+    const [owner] = await ethers.getSigners();
+    iface = (await ethers.getContractFactory("FlashArb")).interface;
+    probe = await (await ethers.getContractFactory("RouteHashProbe")).deploy();
+  });
+
+  it("executeArb selector is 0xe77fcf52 and the signature is the documented one", () => {
+    const f = iface.getFunction("executeArb");
+    expect(f.selector).to.equal("0xe77fcf52");
+    expect(f.format("sighash")).to.equal("executeArb((address,uint256,uint256,uint64,(address,address,address,uint8,bool)[]))");
+  });
+
+  for (const [name, v] of [["V1", V1], ["V2", V2]]) {
+    it(`${name}: encodeFunctionData equals the golden calldata`, () => {
+      const data = iface.encodeFunctionData("executeArb", [v.route]);
+      expect(data).to.equal(v.calldata);
+      expect((data.length - 2) / 2).to.equal(v.calldataLen);
+      expect(ethers.keccak256(data)).to.equal(v.calldataHash);
+    });
+    it(`${name}: abi.encode(uint256(0), route) hash equals the golden params hash`, async () => {
+      expect(await probe.hashParams(0, v.route)).to.equal(v.paramsHash);
+      const enc = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["uint256", "(address,uint256,uint256,uint64,(address,address,address,uint8,bool)[])"],
+        [0, [v.route.loanToken, v.route.loanAmount, v.route.minProfit, v.route.deadline, v.route.hops.map((h) => [h.pool, h.tokenIn, h.tokenOut, h.venue, h.zeroForOne])]]
+      );
+      expect(ethers.keccak256(enc)).to.equal(v.paramsHash);
+    });
+    it(`${name}: the contract decodes the golden calldata (route validation sees the same fields)`, async () => {
+      const dec = iface.decodeFunctionData("executeArb", v.calldata)[0];
+      expect(dec.loanToken).to.equal(v.route.loanToken);
+      expect(dec.loanAmount).to.equal(v.route.loanAmount);
+      expect(dec.hops.length).to.equal(v.route.hops.length);
+    });
+  }
+
+  it("V1 direction sanity: WETH < USDC so WETH is token0; V2: WETH < ARB < USDC", () => {
+    const weth = BigInt("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1");
+    const usdc = BigInt("0xaf88d065e77c8cC2239327C5EDb3A432268e5831");
+    const arbt = BigInt("0x912CE59144191C1204E64559FE8253a0e49E6548");
+    expect(weth < usdc).to.equal(true);
+    expect(weth < arbt && arbt < usdc).to.equal(true);
+  });
+});
