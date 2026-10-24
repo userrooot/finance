@@ -150,6 +150,41 @@ class PaperCfg(BaseModel):
     book_depth: int = 20
 
 
+class DefiGasCfg(BaseModel):
+    base_units: int = 120_000
+    v3_hop_units: int = 120_000
+    v2_hop_units: int = 75_000
+
+
+class DefiChainCfg(BaseModel):
+    rpc_url_env: str                     # ARBITRUM_RPC / BASE_RPC (same names as contracts/hardhat.config.js)
+    rpc_url_default: str
+    max_rps: float = 3.0
+    burst: int = 6
+    tip_gwei: float = 0.0
+    tokens: list[str]
+    venues: list[str]
+    lateness_blocks: list[int]
+    sample_every_s: float = 10.0
+
+
+class DefiCfg(BaseModel):
+    """Flash-loan arbitrage measurement (simulation only; nothing is ever sent)."""
+
+    enabled: bool = False
+    addresses_file: str = "defi/addresses.json"
+    storage_dir: str = "data/defi"
+    loan_tokens: list[str] = ["WETH", "USDC"]
+    min_pool_tvl_usd: float = 10_000.0
+    min_profit_usd: float = 0.05         # net, after gas
+    max_loan_usd: float = 50_000.0
+    max_hops: int = 3
+    tri_top_k: int = 3
+    premium_bps: int = 5                 # checked against addresses.json at startup
+    gas: DefiGasCfg = DefiGasCfg()
+    chains: dict[str, DefiChainCfg]
+
+
 class Settings(BaseModel):
     live_trading: bool = False
     capital: Capital
@@ -165,6 +200,7 @@ class Settings(BaseModel):
     paper: PaperCfg = PaperCfg()
     execution: ExecutionCfg = ExecutionCfg()
     live: LiveCfg = LiveCfg()
+    defi: DefiCfg | None = None
 
 
 def load_settings(path: str | Path = DEFAULT_PATH) -> Settings:

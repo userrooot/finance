@@ -37,8 +37,12 @@ class SizeResult:
 
 
 def aave_premium(amount: int, premium_bps: int = 5) -> int:
-    """Aave PercentageMath.percentMul: round half up."""
-    return (amount * premium_bps + 5000) // 10000
+    """Aave flash-loan premium, rounded UP (ceil).
+
+    SPEC-DEVIATION: design 5.4 says half-up ((a*bps+5000)//10000). Lookup T0(d) (docs/FLASH_ARB_LOOKUPS.md) read the
+    deployed Pool on-chain: premium(999) == 1 and premium(1e9) == 500000, i.e. ceil. Ceil is also the safe side
+    (never under-estimates what Aave pulls)."""
+    return -((-amount * premium_bps) // 10000)
 
 
 # ---- v2 -----------------------------------------------------------------------------------------------------
@@ -195,6 +199,8 @@ def _golden_max(f, lo: int, hi: int, iters: int) -> int:
             a = c1
         else:
             b = c2
+    if b - a > 8:  # not converged to integer resolution (huge range): the curve is flat here, pick the best of three
+        a = b = max((a, (a + b) // 2, b), key=f)
     best_x, best_v = a, f(a)
     for x in range(max(lo, a - 3), min(hi, b + 3) + 1):
         v = f(x)

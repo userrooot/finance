@@ -365,7 +365,7 @@ async def build_registry(client: ChainClient, chain: str, addresses: dict, cfg: 
         if t0 not in by_addr or t1 not in by_addr:
             rejected.append({"pool": e["pool"], "dex": e["dex"], "reason": "token not in chain token list"})
             continue
-        spacing = signed(word(r[2].data, 0), 24) if e["dex"] in V3_DEXES else None
+        spacing = signed(word(r[2].data, 0)) if e["dex"] in V3_DEXES else None
         stable = bool(word(r[2].data, 0)) if e["dex"] in ("aerodrome_v2", "camelot_v2") else False
         if stable:
             rejected.append({"pool": e["pool"], "dex": e["dex"], "reason": "stable pool (v1 quoter has no stable curve)"})
@@ -430,7 +430,7 @@ def _decode_pool(spec: PoolSpec, r: list[CallResult], block: int) -> PoolState:
     if not all(x.success for x in r):
         raise ValueError("call failed")
     if spec.is_v3:
-        sqrt_p, tick = word(r[0].data, 0), signed(word(r[0].data, 1), 24)
+        sqrt_p, tick = word(r[0].data, 0), signed(word(r[0].data, 1))
         if len(r[0].data) < 64:
             raise ValueError("slot0 too short")
         if sqrt_p == 0:
@@ -565,7 +565,7 @@ async def read_ticks(client: ChainClient, snapshot: Snapshot, pools: set[str], w
         if not all(x.success and len(x.data) >= 64 for x in r):
             fail(s, "ticks() call failed")
             continue
-        net = {t: signed(word(x.data, 1), 128) for t, x in zip(ts, r)}
+        net = {t: signed(word(x.data, 1)) for t, x in zip(ts, r)}
         ws = words[s.pool.address]
         states[s.pool.address] = replace(s, liquidity_net=net, word_lo=ws[0], word_hi=ws[-1])
     return replace(snapshot, states=states, errors=errors)

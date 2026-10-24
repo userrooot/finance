@@ -126,3 +126,39 @@ paper:
   interval_s: 30
   state_dir: data/paper
   book_depth: 20
+
+# ---------------- DeFi flash-loan arbitrage measurement (SIMULATION ONLY, see docs/FLASH_ARB_DESIGN.md) ----------------
+# RPC URLs with keys go only in .env (ARBITRUM_RPC=..., BASE_RPC=...), never here.
+defi:
+  enabled: true
+  addresses_file: defi/addresses.json
+  storage_dir: data/defi
+  loan_tokens: [WETH, USDC]
+  min_pool_tvl_usd: 10000
+  min_profit_usd: 0.05
+  max_loan_usd: 50000
+  max_hops: 3
+  tri_top_k: 3
+  premium_bps: 5
+  gas: {base_units: 120000, v3_hop_units: 120000, v2_hop_units: 75000}   # replaced from contracts/gas-report.json in task T4
+  chains:
+    arbitrum:
+      rpc_url_env: ARBITRUM_RPC
+      rpc_url_default: https://arb1.arbitrum.io/rpc
+      max_rps: 5
+      burst: 10
+      tip_gwei: 0.0
+      tokens: [WETH, USDC, USDT, DAI, WBTC, ARB]
+      venues: [uniswap_v3, sushi_v3, pancake_v3, sushi_v2, camelot_v2]
+      lateness_blocks: [0, 2, 8]      # ~0 s, ~0.5 s, ~2 s at 0.257 s/block
+      sample_every_s: 10
+    base:
+      rpc_url_env: BASE_RPC
+      rpc_url_default: https://mainnet.base.org
+      max_rps: 3
+      burst: 6
+      tip_gwei: 0.01
+      tokens: [WETH, USDC, USDT, DAI, cbBTC, cbETH]
+      venues: [uniswap_v3, sushi_v3, pancake_v3, aerodrome_slipstream_initial, aerodrome_slipstream_gaugecaps, aerodrome_slipstream_gaugesv3, sushi_v2, aerodrome_v2]
+      lateness_blocks: [0, 1, 2]      # ~0 s, ~2 s, ~4 s
+      sample_every_s: 10

@@ -139,6 +139,21 @@ def main() -> None:
     p_flat.add_argument("--exchange", required=True)
     p_flat.add_argument("--strategy", choices=tc.STRATEGIES, required=True, help="whose live state lists the bot's spot")
     p_flat.add_argument("--yes-really", action="store_true", help="required: confirms you want market orders now")
+    p_defi = sub.add_parser("defi", help="flash-loan arbitrage measurement (SIMULATION ONLY: nothing is ever sent)")
+    dsub = p_defi.add_subparsers(dest="defi_cmd", required=True)
+    d_probe = dsub.add_parser("probe", help="RPC capability probe: state window, Multicall3, harness")
+    d_scan = dsub.add_parser("scan", help="scan the latest N blocks read-only and store the results")
+    d_meas = dsub.add_parser("measure", help="live measurement: sample, replay, store")
+    for p in (d_probe, d_scan, d_meas):
+        p.add_argument("--chain", required=True, help="arbitrum | base")
+        p.add_argument("--refresh", action="store_true", help="rebuild data/defi/<chain>/registry.json")
+    d_scan.add_argument("--blocks", type=int, default=1)
+    d_meas.add_argument("--hours", type=float, default=24.0)
+    d_meas.add_argument("--sim-rpc", help="alternative RPC URL for the harness simulation (e.g. a local Hardhat fork)")
+    d_rep = dsub.add_parser("report", help="write reports/defi/<from>_<to>.md from stored samples")
+    d_rep.add_argument("--from", dest="from_day", required=True, help="YYYY-MM-DD (UTC)")
+    d_rep.add_argument("--to", dest="to_day", required=True, help="YYYY-MM-DD (UTC)")
+    d_rep.add_argument("--chain", action="append", help="repeatable; default: all configured chains")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -153,6 +168,10 @@ def main() -> None:
         out = export_tax(sd, args.year, Path("reports") / f"tax_{args.strategy}_{args.year}")
         print(f"Saved to {out}_fills.csv, {out}_trades.csv, {out}_README.txt")
         return
+    if args.cmd == "defi":
+        from arb.defi import cli as defi_cli
+
+        raise SystemExit(defi_cli.run(settings, args))
     if settings.live_trading and args.cmd == "paper":
         raise SystemExit("live_trading=true: paper trading is refused so the two are never confused. "
                          "Use `python -m arb live`, or set live_trading: false.")

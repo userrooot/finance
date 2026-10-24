@@ -7,3 +7,7 @@ statsmodels>=0.14
 pyarrow>=15
 pytest>=8
 pytest-asyncio>=0.23
+aiohttp>=3.9
+eth-abi>=5.1,<7
+eth-utils>=5,<7
+eth-hash[pycryptodome]>=0.7
