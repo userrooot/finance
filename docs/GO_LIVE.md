@@ -163,6 +163,21 @@ These are the automatic rules in the code. Check the numbers in `config/settings
 - [ ] **Taker timeout.** Taker orders that are not filled after 20 seconds
   (`live.order_timeout_s`) are cancelled. Only the filled part counts.
 
+## Alerts you may see and what to do
+
+- **UNKNOWN / "order state unknown":** the bot sent an order but could not read the result back
+  (network trouble). It does not guess. Entries are paused, the order's group is frozen, and the bot
+  looks the order up by its client id every cycle. When it finds it, you get **RESOLVED** and the
+  real fill is booked. `/resume` does not override this pause while an order is still unresolved.
+  If it stays unresolved, check the order on the exchange and, if needed, close the position by hand
+  or run `flatten-all`.
+- **ESCALATE ... cancel manually:** a cancel failed three times. The order is still live on the
+  exchange and the bot keeps it in its books. Cancel it on the exchange website or app.
+- **Open order "not tracked":** the exchange has a resting order the bot does not know about
+  (for example after a crash). The bot pauses entries. If its client id starts with `arb` it is
+  cancelled for you; otherwise it is left alone and you decide. Do not run two live bots on the
+  same account and symbols: they would treat each other's orders as strays.
+
 ## 8. Stage 2: $300 per leg
 
 Only move to stage 2 after at least 2 clean weeks at $50. Clean means:

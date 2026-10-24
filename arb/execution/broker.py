@@ -33,7 +33,11 @@ class Broker(Protocol):
         """Move a resting order to new_price; returns any fill that happened before the cancel."""
 
     def cancel_resting(self, order: RestingOrder) -> Fill | None:
-        """Cancel a resting order; returns any fill that raced the cancel."""
+        """Cancel a resting order; returns any fill that raced the cancel. A live broker leaves
+        order.cancel_failures > 0 when the cancel is not confirmed (the engine then keeps the order)."""
+
+    # Live only (the engine calls it only for Fill.unknown records, which SimBroker never returns):
+    # def resolve_order(self, u: dict, snapshot: MarketSnapshot) -> Fill | None
 
 
 class SimBroker:

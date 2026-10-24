@@ -6,7 +6,8 @@ no crash, and the problem surfaced as an event / alert. Two harnesses:
 - Rig: TradingEngine + LiveBroker + ChaosExchange (engine-level, snapshot-driven, fake time).
 - LiveTrader tests (make_trader): the whole live loop incl. persisted state, Telegram and reconcile.
 
-Tests marked xfail(strict=True, reason="BUG: ...") document real defects found by this suite.
+Defects this suite found were fixed (they used to be xfail(strict=True, reason="BUG: ...")); the
+tests below now guard them as regressions.
 """
 import itertools
 import json
@@ -25,7 +26,7 @@ from arb.live.runner import LiveTrader
 from arb.live.safety import LIVE_CONFIRM_PHRASE
 from arb.strategies.base import Strategy
 from arb.strategies.funding_carry import FundingCarry
-from arb.models import OrderBook
+from arb.models import FundingInfo, OrderBook
 from tests.fake_ccxt import FakeExchange, perp, spot
 from tests.fakes import FakeSource
 
@@ -244,7 +245,9 @@ def test_hedge_and_unwind_both_fail_then_next_strategy_step_closes_via_taker():
 
 async def test_hedge_and_unwind_both_fail_in_live_trader_alerts(tmp_path):
     """Same double failure through LiveTrader: alerts go out and the next cycle flattens the naked leg."""
-    t, ex, notes = make_trader(tmp_path, strategy=carry_strategy())
+    # FundingCarry requires a funding quote for its perp; without one build_snapshot skips every
+    # cycle ("missing funding") and no order is ever placed (the old IndexError was this test-setup gap).
+    t, ex, notes = make_trader(tmp_path, strategy=carry_strategy(), src=with_funding(make_source()))
     await t.run_once()
     oid = t.portfolio.open_orders[0].exchange_order_id
     ex.fail(is_market(SPOT))
@@ -319,16 +322,76 @@ def test_accepted_hedge_with_failing_lookup_must_not_be_treated_as_zero_fill():
     rig.step(30)
     # Whatever the bot decided, its books must match the exchange (no unknown naked leg).
     rig.assert_consistent()
+    # the lookup is retried: the accepted hedge is found and booked, nothing is unwound
+    rig.assert_hedged(QTY)
+    assert len(rig.ex.orders_of(SPOT)) == 1 and rig.ex.orders_of(PERP, "market") == []
 
 
-test_accepted_hedge_with_failing_lookup_must_not_be_treated_as_zero_fill = pytest.mark.xfail(
-    strict=True,
-    reason="BUG: arb/execution/live_broker.py LiveBroker._create: the client-id lookup "
-           "(_find_by_client_id) runs inside the `except NetworkError` handler, so when the lookup itself "
-           "raises NetworkError the exception escapes _create, _taker reports a ZERO fill although the "
-           "order was accepted. The engine then unwinds the maker leg, leaving a spot long on the exchange "
-           "that the bot does not know about (reconcile ignores extra spot coins).")(
-    test_accepted_hedge_with_failing_lookup_must_not_be_treated_as_zero_fill)
+def test_hedge_lookup_down_for_good_is_unknown_not_zero_then_resolved():
+    """Create times out and every client-id lookup fails: the hedge is UNKNOWN, not a zero fill."""
+    rig = Rig(Scripted({0: maker_entry(), 1: taker_entry("g2"), 2: taker_entry("g3")}))
+    oid = rig.place_maker()
+    rig.ex.fill_resting(oid)
+    rig.ex.fail_next_create = ccxt.RequestTimeout("accepted, response lost")
+    rig.ex.fetch_orders_faults += [ccxt.NetworkError("lookup down")] * 3   # all retries of the lookup
+    res = rig.step(30)
+
+    assert rig.ex.orders_of(PERP, "market") == []            # maker leg NOT unwound against a guess
+    assert rig.pf.net_qty(EX, PERP, "swap") == pytest.approx(-QTY)
+    [u] = rig.pf.unresolved_orders
+    assert u["symbol"] == SPOT and u["side"] == "buy" and u["group_id"] == "g1" and u["client_order_id"].startswith("arb")
+    assert rig.risk.state.paused and "unknown" in rig.risk.state.pause_reason
+    assert any("ORDER STATE UNKNOWN" in e for e in rig.events)
+    assert any("UNKNOWN order state" in e for e in rig.broker.events)
+    assert [f for f in res.fills if f.unknown]
+    assert [i.group_id for i, r in res.rejected] == ["g2", "g2"]   # entries paused
+
+    rig.step(60)                                                 # lookup works again -> resolved & booked
+    assert rig.pf.unresolved_orders == []
+    rig.assert_hedged(QTY)
+    rig.assert_consistent()
+    assert any("RESOLVED" in e for e in rig.events)
+    assert rig.risk.state.paused                                 # a human still has to /resume
+    assert len(rig.ex.orders_of(SPOT)) == 1                      # never re-sent
+
+
+async def test_unknown_hedge_in_live_trader_pauses_alerts_and_survives_restart(tmp_path):
+    t, ex, notes = make_trader(tmp_path, strategy=Hold(entry_legs(style="maker_first")))
+    await t.run_once()
+    [o] = t.portfolio.open_orders
+    ex.fill_resting(o.exchange_order_id)
+    ex.fail_next_create = ccxt.RequestTimeout("accepted, response lost")
+    ex.fetch_orders_faults += [ccxt.NetworkError("lookup down")] * 3
+    await t.run_once()
+    assert t.risk.state.paused and t.portfolio.unresolved_orders
+    assert any("UNKNOWN" in m for m in notes.msgs)
+    assert ex.orders_of(PERP, "market") == []                 # no unwind on a guess
+
+    t2, _, notes2 = make_trader(tmp_path, ex=ex)              # crash/restart: the unknown order is not forgotten
+    assert [u["client_order_id"] for u in t2.portfolio.unresolved_orders] == \
+        [u["client_order_id"] for u in t.portfolio.unresolved_orders]
+    assert t2.risk.state.paused
+    await t2.run_once()                                       # resolved by client id and booked
+    assert t2.portfolio.unresolved_orders == []
+    assert t2.portfolio.net_qty(EX, SPOT, "spot") == pytest.approx(QTY) == ex.net(SPOT)
+    assert t2.portfolio.net_qty(EX, PERP, "swap") == pytest.approx(-QTY) == ex.net(PERP)
+    assert len(ex.orders_of(SPOT)) == 1 and any("RESOLVED" in m for m in notes2.msgs)
+
+
+def test_unknown_order_that_never_reached_exchange_resolves_as_zero_and_group_is_closed():
+    rig = Rig(carry_strategy())
+    oid = rig.place_maker()
+    rig.ex.fill_resting(oid)
+    rig.ex.fail(is_market(SPOT), ccxt.RequestTimeout, times=1)   # never reached the exchange ...
+    rig.ex.fetch_orders_faults += [ccxt.NetworkError("lookup down")] * 3   # ... but we cannot tell
+    rig.step(30)
+    assert rig.pf.unresolved_orders and rig.ex.orders_of(SPOT) == []
+    assert rig.pf.net_qty(EX, PERP, "swap") == pytest.approx(-QTY)   # group frozen, not closed on a guess
+    assert rig.ex.orders_of(PERP, "market") == []
+    rig.step(60)       # lookup confirms there is no such order -> zero fill; the unbalanced group is closed
+    assert rig.pf.unresolved_orders == [] and rig.pf.positions == {}
+    rig.assert_consistent()
+
 
 
 # --- 4. taker order stuck open ----------------------------------------------------------------
@@ -365,7 +428,13 @@ def test_stuck_taker_unwind_partial_leaves_group_that_strategy_closes():
     rig.ex.fill_ratio[PERP] = 0.5                 # unwind: only half
     rig.ex.fill_resting(oid)
     rig.step(30)
-    assert rig.pf.net_qty(EX, PERP, "swap") == pytest.approx(-QTY / 2)
+    # The unwind leaves -QTY/2. In the SAME step FundingCarry then sees the group unbalanced (no
+    # spot) and sends its taker close for that QTY/2, which is also stuck at 50% -> -QTY/4. That is
+    # the intended order of the engine step (resting work, then strategy), not a bug: the books still
+    # equal the exchange and nothing is left open.
+    assert rig.pf.net_qty(EX, PERP, "swap") == pytest.approx(-QTY / 4)
+    closes = [o for o in rig.ex.orders_of(PERP, "market") if o["side"] == "buy"]
+    assert [o["amount"] for o in closes] == pytest.approx([0.2, 0.1])   # unwind, then the strategy's close
     rig.assert_consistent()
     assert rig.ex.open_orders() == []
     rig.ex.create_faults.clear()
@@ -463,6 +532,11 @@ def live_settings(**kw):
     s = load_settings().model_copy(update={"live_trading": True})
     s.live = s.live.model_copy(update={"max_order_usd": 300.0, "capital_usd": 1100.0, **kw})
     return s
+
+
+def with_funding(src, rate=0.0003, next_s=NOW_S + 3600):
+    src.add_funding(FundingInfo(EX, PERP, rate, 8.0, PX, PX, int(next_s * 1000)))
+    return src
 
 
 def make_source(ts_s=NOW_S, perp_ts_s=None, src=None):
@@ -609,16 +683,37 @@ async def test_orphan_resting_order_that_fills_is_caught_by_periodic_reconcile(t
     assert len(ex.created) == 1                               # no automatic trading to "fix" it
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: arb/live/safety.py reconcile / arb/live/runner.py safety_check ignore "
-                   "open orders on the exchange. After a crash between place_resting and _persist (state is only "
-                   "written at the end of run_once, so engine._place_maker's 'a crash never loses track' comment does "
-                   "not hold) a live post-only order unknown to the bot stays resting forever; startup reconcile does "
-                   "not pause/alert/cancel, and the bot only notices after it fills as a naked leg.")
 async def test_startup_flags_unknown_open_order_on_exchange(tmp_path):
     ex = make_ex_live()
     ex.create_order(PERP, "limit", "sell", QTY / 0.01, PX + 5, {"postOnly": True, "clientOrderId": "orphan"})
     t, ex, notes = make_trader(tmp_path, ex=ex)
-    assert t.risk.state.paused or notes.msgs or ex.open_orders() == []
+    assert t.risk.state.paused and "reconcile mismatch" in t.risk.state.pause_reason
+    assert any("RECONCILE MISMATCH" in m and "not tracked" in m for m in notes.msgs)
+    assert len(ex.open_orders()) == 1                         # not ours (no "arb" prefix): left alone
+
+
+async def test_startup_cancels_untracked_open_order_with_bot_prefix(tmp_path):
+    ex = make_ex_live()
+    ex.create_order(PERP, "limit", "sell", QTY / 0.01, PX + 5, {"postOnly": True, "clientOrderId": "arb" + "0" * 24})
+    t, ex, notes = make_trader(tmp_path, ex=ex)
+    assert t.risk.state.paused and ex.open_orders() == []
+    assert any("CANCELLED" in m for m in notes.msgs)
+    assert len(ex.created) == 1                               # nothing traded
+
+
+async def test_resting_order_is_persisted_before_the_cycle_ends(tmp_path):
+    """A crash later in the same cycle must not lose the order that was just placed."""
+    t, ex, _ = make_trader(tmp_path, strategy=Hold(entry_legs(style="maker_first")))
+
+    def crash(_snap):
+        raise RuntimeError("process died")
+    t.portfolio.record_equity = crash                        # dies after placement, before end-of-cycle persist
+    with pytest.raises(RuntimeError):
+        await t.run_once()
+    [placed] = ex.open_orders()
+    t2, _, notes = make_trader(tmp_path, ex=ex)              # restart from state.json
+    assert [o.exchange_order_id for o in t2.portfolio.open_orders] == [placed["id"]]
+    assert not t2.risk.state.paused                          # known order: no mismatch
 
 
 # --- 9. Telegram /kill while a maker entry rests partially filled -----------------------------
@@ -662,16 +757,30 @@ async def test_kill_with_cancel_failure_must_not_forget_live_order(tmp_path):
     await t.run_once()
     # either the bot still tracks the order (so the next cycle retries the cancel) or it is really gone
     assert t.portfolio.open_orders or ex.open_orders() == []
+    assert ex.open_orders() == [] and t.portfolio.open_orders == []   # retried within the kill cycle
 
 
-test_kill_with_cancel_failure_must_not_forget_live_order = pytest.mark.xfail(
-    strict=True,
-    reason="BUG: arb/execution/live_broker.py LiveBroker.cancel_resting: when cancel_order fails (NetworkError / "
-           "ExchangeError other than OrderNotFound) the error is only logged, fetch_order then shows the order still "
-           "'open', yet exchange_order_id is set to None and no fill is returned; engine._cancel then removes the "
-           "order from portfolio.open_orders. The order stays live on the exchange, untracked (even after /kill or an "
-           "entry timeout), and any later fill is an unhedged naked leg.")(
-    test_kill_with_cancel_failure_must_not_forget_live_order)
+async def test_kill_keeps_retrying_failed_cancels_every_cycle_and_still_flattens(tmp_path):
+    cmds = Cmds()
+    t, ex, notes = make_trader(tmp_path, strategy=Hold(entry_legs(style="maker_first")), cmds=cmds)
+    await t.run_once()
+    [o] = t.portfolio.open_orders
+    oid = o.exchange_order_id
+    ex.fill_resting(oid, 0.1)                                 # half filled -> a position to flatten
+    ex.cancel_faults += [ccxt.ExchangeNotAvailable("maintenance")] * 4
+    cmds.queue = ["/kill"]
+    await t.run_once()
+    assert ex.orders[oid]["status"] == "open"
+    assert [x.exchange_order_id for x in t.portfolio.open_orders] == [oid]   # still tracked
+    assert t.portfolio.positions == {} and ex.net(PERP) == pytest.approx(0) and ex.net(SPOT) == pytest.approx(0)
+    await t.run_once()                                        # attempts 3 and 4: escalated
+    assert any("ESCALATE" in m for m in notes.msgs)
+    assert t.portfolio.open_orders and ex.orders[oid]["status"] == "open"
+    await t.run_once()                                        # exchange recovers -> cancelled, forgotten
+    assert ex.orders[oid]["status"] == "canceled" and t.portfolio.open_orders == []
+    assert t.portfolio.positions == {}
+    assert ex.net(PERP) == pytest.approx(0) and ex.net(SPOT) == pytest.approx(0)
+
 
 
 def test_entry_timeout_with_cancel_failure_must_not_forget_live_order():
@@ -681,13 +790,39 @@ def test_entry_timeout_with_cancel_failure_must_not_forget_live_order():
     rig.step(600)
     assert rig.pf.open_orders or rig.ex.open_orders() == []
     assert any("cancel failed" in e for e in rig.broker.events)
+    assert rig.order.exchange_order_id == oid and rig.ex.orders[oid]["status"] == "open"
+    rig.ex.on_cancel = lambda o: rig.ex.fill_resting(o, 0.1)   # partial fill races the retried cancel
+    rig.step(630)                                              # retried: cancelled, late fill hedged
+    assert rig.pf.open_orders == [] and rig.ex.open_orders() == []
+    rig.assert_hedged(0.001)
+    rig.assert_consistent()
+    assert rig.pf.exec_stats["entry_cancels"] == 1
 
 
-test_entry_timeout_with_cancel_failure_must_not_forget_live_order = pytest.mark.xfail(
-    strict=True,
-    reason="BUG: arb/execution/live_broker.py LiveBroker.cancel_resting (same root cause as the /kill case): a failed "
-           "cancel on entry timeout drops the order from the bot's books while it is still open on the exchange.")(
-    test_entry_timeout_with_cancel_failure_must_not_forget_live_order)
+def test_requote_with_failed_cancel_never_posts_a_second_order():
+    rig = Rig(Scripted({0: maker_entry()}))
+    oid = rig.place_maker()
+    rig.ex.cancel_faults.append(ccxt.RequestTimeout("cancel timed out"))
+    rig.step(30, px=PX + 500)                                  # touch moved: requote, but the cancel fails
+    assert len(rig.ex.orders_of(PERP, "limit")) == 1 and rig.order.exchange_order_id == oid
+    assert rig.order.price == PX + 5                           # still the live order's price
+    rig.step(60, px=PX + 500)                                  # retried: cancelled and re-posted once
+    assert len(rig.ex.open_orders()) == 1 and len(rig.ex.orders_of(PERP, "limit")) == 2
+    assert rig.order.price == PX + 505
+
+
+def test_exit_timeout_with_failed_cancel_waits_before_taker_fallback():
+    rig, exit_id = open_position_rig(exit_timeout_s=300)
+    rig.ex.cancel_faults.append(ccxt.RequestTimeout("cancel timed out"))
+    rig.step(400)                                              # (script step 3 also rests a g2 entry)
+    [ex_order] = [o for o in rig.pf.open_orders if o.group_id == "g1"]
+    assert rig.ex.orders[exit_id]["status"] == "open" and ex_order.exchange_order_id == exit_id
+    assert rig.ex.orders_of(SPOT, "market")[1:] == []          # no taker close while the exit may still fill
+    rig.step(430)
+    assert rig.ex.orders[exit_id]["status"] == "canceled"
+    assert rig.pf.group_positions("g1") == [] and [o.group_id for o in rig.pf.open_orders] == ["g2"]
+    rig.assert_consistent()
+
 
 
 # --- 10. exchange cancels our resting order ---------------------------------------------------
@@ -812,13 +947,3 @@ def test_filled_maker_order_leaves_no_dust_resting_order_blocking_the_group():
     rig.assert_hedged()
     assert rig.pf.open_orders == []                           # nothing should still be resting
 
-
-test_filled_maker_order_leaves_no_dust_resting_order_blocking_the_group = pytest.mark.xfail(
-    strict=True,
-    reason="BUG: arb/core/engine.py TradingEngine._work_resting/_apply_maker_fill + LiveBroker._amount: the resting "
-           "order's qty is the un-rounded intent qty (e.g. 0.0019999) but the exchange amount is truncated to the "
-           "step (0.19 contracts = 0.0019). After the exchange order fully fills, o.qty keeps a dust remainder "
-           "(~1e-4) > EPS so the order is never removed from portfolio.open_orders: the 'busy' filter then drops the "
-           "group's strategy intents (incl. exits) until entry_timeout_s (6h in settings.yaml) cancels it, and "
-           "LiveBroker keeps refusing to re-place the dust ('below exchange minimum').")(
-    test_filled_maker_order_leaves_no_dust_resting_order_blocking_the_group)

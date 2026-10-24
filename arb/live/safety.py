@@ -5,15 +5,17 @@
   daily-loss and kill-switch limits are measured against).
 - check_key_permissions: refuse to trade with an API key that can withdraw funds, and refuse
   when the exchange's key permissions cannot be verified.
-- reconcile: compare the exchange's balances/positions with the bot's portfolio. It only reports;
-  the caller pauses new entries and alerts a human. It never trades to "fix" a mismatch.
+- reconcile: compare the exchange's balances/positions with the bot's portfolio and, given the
+  symbols to check, its open orders with the bot's resting orders (unknown_open_orders). It only
+  reports; the caller pauses new entries and alerts a human. It never trades to "fix" a mismatch
+  (the caller may cancel an untracked order that carries the bot's own client-id prefix).
 - liquidation_risks: perp positions (long or short) whose liquidation price is too close to the mark.
 """
 from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from arb.config import Settings
 from arb.core.portfolio import Portfolio
@@ -77,8 +79,44 @@ def _expected(portfolio: Portfolio) -> tuple[dict, dict]:
     return spot, perps
 
 
-def reconcile(clients: Mapping[str, Any], portfolio: Portfolio, tolerance_pct: float) -> list[str]:
-    """Human-readable mismatches between the exchange accounts and the bot's portfolio."""
+def unknown_open_orders(clients: Mapping[str, Any], portfolio: Portfolio,
+                        symbols: Mapping[str, Iterable[str]]) -> tuple[list[tuple[str, dict]], list[str]]:
+    """Open orders on the exchange that the bot does not track, and read errors.
+
+    Checked per symbol: the given symbols plus every symbol the bot holds or rests orders on.
+    An order is tracked when its id is a resting order's exchange_order_id, or its client id is
+    an unresolved placement (pending_client_id) or an unresolved taker order."""
+    known_ids = {(o.exchange, str(o.exchange_order_id)) for o in portfolio.open_orders if o.exchange_order_id}
+    known_cids = ({o.pending_client_id for o in portfolio.open_orders if o.pending_client_id}
+                  | {u.get("client_order_id") for u in portfolio.unresolved_orders})
+    found, errors = [], []
+    for ex, client in clients.items():
+        syms = (set(symbols.get(ex, ())) | {o.symbol for o in portfolio.open_orders if o.exchange == ex}
+                | {p.symbol for p in portfolio.positions.values() if p.exchange == ex})
+        for sym in sorted(syms):
+            try:
+                orders = client.fetch_open_orders(sym)
+            except Exception as e:
+                errors.append(f"{ex}: could not read open orders on {sym} ({type(e).__name__})")
+                continue
+            for o in orders:
+                if (ex, str(o.get("id"))) in known_ids or (o.get("clientOrderId") and o.get("clientOrderId") in known_cids):
+                    continue
+                found.append((ex, o))
+    return found, errors
+
+
+def describe_order(ex: str, o: dict) -> str:
+    return (f"{ex} open order {o.get('id')} (client id {o.get('clientOrderId')}) {o.get('side')} {o.get('amount')} "
+            f"{o.get('symbol')} @ {o.get('price')} (filled {o.get('filled') or 0}) is not tracked by the bot")
+
+
+def reconcile(clients: Mapping[str, Any], portfolio: Portfolio, tolerance_pct: float,
+              order_symbols: Mapping[str, Iterable[str]] | None = None) -> list[str]:
+    """Human-readable mismatches between the exchange accounts and the bot's portfolio.
+
+    With `order_symbols` ({exchange: symbols}) open orders are compared too: an open order the bot does
+    not track is a mismatch (an unmanaged resting order is a naked-leg risk once it fills)."""
     spot, perps = _expected(portfolio)
     tol = tolerance_pct / 100
     issues = []
@@ -107,6 +145,9 @@ def reconcile(clients: Mapping[str, Any], portfolio: Portfolio, tolerance_pct: f
             want, have = perps.get((ex, sym), 0.0), actual.get(sym, 0.0)
             if abs(have - want) > max(abs(want) * tol, MIN_QTY):
                 issues.append(f"{ex} perp {sym}: exchange {have:+.8f} vs bot {want:+.8f}")
+    if order_symbols is not None:
+        orphans, errors = unknown_open_orders(clients, portfolio, order_symbols)
+        issues += errors + [describe_order(ex, o) for ex, o in orphans]
     return issues
 
 

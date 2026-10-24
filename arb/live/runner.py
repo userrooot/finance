@@ -3,8 +3,13 @@
 Before it will start: the triple live gate passes and every exchange's API key is verified
 trade-only. Then each cycle:
 - Telegram commands are handled (/status, /pause, /resume, /kill).
-- Every live.reconcile_every_s the exchange accounts are compared with the bot's portfolio; a
-  mismatch pauses new entries and alerts. Nothing is traded to "fix" it.
+- Every live.reconcile_every_s the exchange accounts (balances, positions, open orders) are
+  compared with the bot's portfolio; a mismatch pauses new entries and alerts. Nothing is traded
+  to "fix" it. An open order the bot does not track is reported; if it carries the bot's own
+  client-id prefix (an order placed just before a crash) it is also cancelled, since an
+  unmanaged resting order becomes a naked leg when it fills.
+- State is persisted as soon as an order is placed or a fill/hedge is booked (not only at the
+  end of the cycle), so a crash mid-cycle cannot lose track of an order.
 - Short perps too close to liquidation have their group closed with taker orders.
 - The engine step runs in a worker thread (ccxt calls block), exactly as in paper trading.
 State lives in its own directory (data/live/<strategy>), never shared with paper.
@@ -22,8 +27,9 @@ from arb.config import Settings
 from arb.core.engine import StepResult
 from arb.core.types import MarketSnapshot
 from arb.costs import CostModel
-from arb.execution.live_broker import LiveBroker
-from arb.live.safety import check_key_permissions, check_live_gate, liquidation_risks, reconcile
+from arb.execution.live_broker import CLIENT_ID_PREFIX, LiveBroker
+from arb.live.safety import (check_key_permissions, check_live_gate, describe_order, liquidation_risks, reconcile,
+                             unknown_open_orders)
 from arb.monitoring.commands import TelegramCommands
 from arb.paper.runner import PaperTrader
 from arb.strategies.base import Strategy
@@ -53,6 +59,7 @@ class LiveTrader(PaperTrader):
             "capital": settings.capital.model_copy(update={"total_usd": settings.live.capital_usd})})
         super().__init__(settings, strategy, source, state_dir, notifier=notifier, clock=clock, sleep=sleep,
                          broker=self.broker)
+        self.engine.on_state_change = self._persist  # persist right after placements and fills
         self.commands = commands if commands is not None else TelegramCommands()
         self._last_reconcile = clock()
         self.safety_check()  # startup reconciliation
@@ -67,8 +74,30 @@ class LiveTrader(PaperTrader):
             except Exception as e:
                 log.warning("notifier failed: %s", type(e).__name__)
 
+    def _order_symbols(self) -> dict[str, list[str]]:
+        out: dict[str, list[str]] = {}
+        for ex, sym, _ in self.strategy.requirements().quotes:
+            if ex in self.clients:
+                out.setdefault(ex, []).append(sym)
+        return out
+
     def safety_check(self) -> list[str]:
         issues = reconcile(self.clients, self.portfolio, self.settings.live.reconcile_tolerance_pct)
+        orphans, errors = unknown_open_orders(self.clients, self.portfolio, self._order_symbols())
+        issues += errors
+        for ex, o in orphans:
+            msg = describe_order(ex, o)
+            if str(o.get("clientOrderId") or "").startswith(CLIENT_ID_PREFIX):
+                # ours (e.g. placed just before a crash, never persisted): unmanaged, so cancel it.
+                # Any part that already filled shows up as a position/balance mismatch.
+                try:
+                    self.clients[ex].cancel_order(o["id"], o.get("symbol"))
+                    msg += "; it has the bot's client-id prefix, so it was CANCELLED (check it for fills)"
+                except Exception as e:
+                    msg += f"; it has the bot's client-id prefix but the cancel FAILED ({type(e).__name__}): cancel it manually"
+            else:
+                msg += "; not placed by this bot, left alone: cancel it manually if it is not yours"
+            issues.append(msg)
         if issues:
             self.risk.pause(f"reconcile mismatch: {issues[0]}")
             self._alert("RECONCILE MISMATCH, new entries paused:\n" + "\n".join(issues))

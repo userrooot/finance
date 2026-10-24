@@ -60,6 +60,9 @@ class Portfolio:
         self.funding_received = 0.0
         self.traded_notional = 0.0
         self.open_orders: list[RestingOrder] = []
+        # live only: taker orders whose outcome on the exchange is unknown (see Fill.unknown);
+        # each is a dict with the order's client_order_id, group, instrument, side and requested qty
+        self.unresolved_orders: list[dict] = []
         self.exec_stats: dict[str, float] = {}
         self._groups: dict[str, _GroupStats] = {}
 
@@ -165,6 +168,7 @@ class Portfolio:
             "fees_paid": self.fees_paid, "funding_received": self.funding_received,
             "traded_notional": self.traded_notional,
             "open_orders": [asdict(o) for o in self.open_orders],
+            "unresolved_orders": [dict(u) for u in self.unresolved_orders],
             "exec_stats": self.exec_stats,
             "groups": {gid: asdict(g) for gid, g in self._groups.items()},
         }
@@ -182,6 +186,7 @@ class Portfolio:
         p.fees_paid, p.funding_received = d["fees_paid"], d["funding_received"]
         p.traded_notional = d["traded_notional"]
         p.open_orders = [RestingOrder(**o) for o in d.get("open_orders", [])]
+        p.unresolved_orders = [dict(u) for u in d.get("unresolved_orders", [])]
         p.exec_stats = dict(d.get("exec_stats", {}))
         p._groups = {gid: _GroupStats(**g) for gid, g in d["groups"].items()}
         return p

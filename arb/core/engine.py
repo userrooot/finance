@@ -13,6 +13,16 @@ checks resting orders for fills (against the market since they were placed), the
 the touch has moved away from, cancels entries that time out (or when entries are halted),
 and turns timed-out exits into taker orders so exits always complete. The kill switch cancels
 every resting order and flattens with taker orders.
+
+Live-only safety (never triggered by SimBroker, so backtest/paper numbers are unchanged):
+- A Fill with unknown=True (the order may be on the exchange but its outcome could not be read)
+  is not a zero fill: it is recorded in portfolio.unresolved_orders, entries are paused, its group
+  is frozen (no strategy intents, no unwind against it) and each step asks the broker to resolve
+  it; the real fill is then booked so the books match the exchange, and a human is alerted.
+- A resting order leaves the book only when the broker confirms it is no longer open
+  (cancel_failures == 0) or it is done; an unconfirmed cancel is retried every step.
+- on_state_change() is called right after anything the exchange now knows about (placements,
+  fills, unknown orders) so the caller can persist state before the step continues.
 """
 from __future__ import annotations
 
@@ -43,7 +53,7 @@ class StepResult:
 class TradingEngine:
     def __init__(self, strategy: Strategy, broker: Broker, portfolio: Portfolio, risk: RiskManager,
                  delay_execution: bool = False, on_event: Callable[[str], None] | None = None,
-                 execution: ExecutionCfg | None = None):
+                 execution: ExecutionCfg | None = None, on_state_change: Callable[[], None] | None = None):
         self.strategy = strategy
         self.execution = execution or ExecutionCfg()
         self.broker = broker
@@ -52,6 +62,7 @@ class TradingEngine:
         self.delay_execution = delay_execution
         self.on_event = on_event or (lambda msg: log.warning(msg))
         self.pending: list[OrderIntent] = []
+        self.on_state_change = on_state_change or (lambda: None)
 
     def execute_pending(self, snapshot: MarketSnapshot) -> StepResult:
         """Execute queued intents at this snapshot's prices, re-checking risk against current state."""
@@ -67,6 +78,8 @@ class TradingEngine:
         for e in res.events:
             self.on_event(e)
 
+        if self.portfolio.unresolved_orders:
+            res.fills += self._resolve_unknown(snapshot)
         if self.risk.state.killed and self.portfolio.open_orders:
             for o in list(self.portfolio.open_orders):
                 res.fills += self._cancel(o, snapshot, "kill_cancels")
@@ -76,7 +89,8 @@ class TradingEngine:
         if self.risk.state.killed:
             intents = self._flatten_all()
         else:
-            busy = {o.group_id for o in self.portfolio.open_orders}
+            busy = ({o.group_id for o in self.portfolio.open_orders}
+                    | {u["group_id"] for u in self.portfolio.unresolved_orders})
             intents = [i for i in self.strategy.on_snapshot(snapshot, self.portfolio) if i.group_id not in busy]
         approved, rejected = self.risk.check(intents, self.portfolio, snapshot)
         res.rejected += rejected
@@ -113,25 +127,80 @@ class TradingEngine:
         self.portfolio.open_orders.append(order)
         self.broker.place_resting(order)
         self.portfolio.count("maker_orders")
+        self._flag_unknown_placement(order)
+        self.on_state_change()
+
+    def _flag_unknown_placement(self, o: RestingOrder) -> None:
+        reason = f"order state unknown: {o.pending_client_id}"
+        if o.pending_client_id is None or self.risk.state.pause_reason == reason:
+            return
+        self.risk.pause(reason)
+        self.on_event(f"ORDER STATE UNKNOWN: maker {o.side} {o.qty:.8f} {o.symbol} in {o.group_id} (client id "
+                      f"{o.pending_client_id}); entries paused, the order is resolved before it is re-placed")
+
+    @staticmethod
+    def _finished(o: RestingOrder) -> bool:
+        return o.qty <= EPS or o.done
+
+    # --- fills and unknown order outcomes ------------------------------------------------
+    def _apply_fills(self, fills: list[Fill]) -> None:
+        """Book fills; an unknown outcome is recorded as unresolved (entries paused), never booked as zero."""
+        pf = self.portfolio
+        for f in fills:
+            if not f.unknown:
+                pf.apply_fill(f)
+                continue
+            pf.unresolved_orders.append({
+                "client_order_id": f.client_order_id, "group_id": f.group_id, "exchange": f.exchange,
+                "symbol": f.symbol, "market": f.market, "side": f.side, "qty": f.requested_qty,
+                "reduce_only": f.reduce_only, "tag": f.tag, "ts_ms": f.ts_ms, "attempts": 0})
+            self.risk.pause(f"order state unknown: {f.client_order_id}")
+            self.on_event(f"ORDER STATE UNKNOWN: {f.side} {f.requested_qty:.8f} {f.symbol} on {f.exchange} in "
+                          f"{f.group_id} (client id {f.client_order_id}); entries paused, group frozen until "
+                          f"the order is found")
+        if fills:
+            self.on_state_change()
+
+    def _resolve_unknown(self, snapshot: MarketSnapshot) -> list[Fill]:
+        """Ask the broker for the real outcome of unresolved orders and book what actually filled."""
+        pf, fills = self.portfolio, []
+        for u in list(pf.unresolved_orders):
+            f = self.broker.resolve_order(u, snapshot)
+            if f is None:
+                continue
+            pf.unresolved_orders.remove(u)
+            pf.apply_fill(f)
+            fills.append(f)
+            self.on_event(f"RESOLVED order {u['client_order_id']} ({u['side']} {u['qty']:.8f} {u['symbol']} in "
+                          f"{u['group_id']}): the exchange filled {f.qty:.8f} @ {f.price:.2f}; booked. Entries "
+                          f"stay paused: check the group, then /resume")
+        if fills:
+            self.on_state_change()
+            self.strategy.on_fills(fills)
+        return fills
 
     def _work_resting(self, snapshot: MarketSnapshot) -> list[Fill]:
         pf, cfg = self.portfolio, self.execution
         fills: list[Fill] = []
         for o in list(pf.open_orders):
-            f = self.broker.check_resting(o, snapshot)
-            if f is not None:
-                fills += self._apply_maker_fill(o, f, snapshot)
-            if o.qty <= EPS:
+            if not o.done:
+                f = self.broker.check_resting(o, snapshot)
+                if f is not None:
+                    fills += self._apply_maker_fill(o, f, snapshot)
+            if self._finished(o):
                 pf.open_orders.remove(o)
 
         for o in list(pf.open_orders):
             age_s = (snapshot.ts_ms - o.created_ms) / 1000
             q = snapshot.quote(o.exchange, o.symbol)
-            if not o.reduce_only and (not self.risk.entries_allowed or age_s >= cfg.entry_timeout_s):
+            if self.risk.state.killed:  # an earlier kill cancel was not confirmed: retry, never re-post
+                fills += self._cancel(o, snapshot, "kill_cancels")
+            elif not o.reduce_only and (not self.risk.entries_allowed or age_s >= cfg.entry_timeout_s):
                 fills += self._cancel(o, snapshot, "entry_cancels")
             elif o.reduce_only and age_s >= cfg.exit_timeout_s:
                 fills += self._cancel(o, snapshot, "exit_taker_fallbacks")
-                if o.qty > EPS:
+                # only once the resting exit is confirmed gone, or the taker close could double it
+                if o.cancel_failures == 0 and not self._finished(o):
                     h = o.hedge
                     fills += self._execute([
                         OrderIntent(o.group_id, o.exchange, o.symbol, o.market, o.side, o.qty, reduce_only=True, tag=o.tag),
@@ -143,10 +212,13 @@ class TradingEngine:
                     late = self.broker.replace_resting(o, touch)  # live: cancel + re-post
                     if late is not None:
                         fills += self._apply_maker_fill(o, late, snapshot)
-                    o.price, o.placed_ms = touch, snapshot.ts_ms
-                    pf.count("requotes")
-                    if o.qty <= EPS:
+                    if o.cancel_failures == 0:  # else the old order is still live at the old price
+                        o.price, o.placed_ms = touch, snapshot.ts_ms
+                        pf.count("requotes")
+                    if self._finished(o):
                         pf.open_orders.remove(o)
+        for o in pf.open_orders:
+            self._flag_unknown_placement(o)
         if fills:
             self.strategy.on_fills(fills)
         return fills
@@ -160,12 +232,20 @@ class TradingEngine:
         return [f] + self._hedge_maker_fill(o, f, snapshot)
 
     def _cancel(self, o: RestingOrder, snapshot: MarketSnapshot, stat: str) -> list[Fill]:
-        """Cancel a resting order. A fill that raced the cancel is still applied and hedged."""
+        """Cancel a resting order. A fill that raced the cancel is still applied and hedged.
+
+        The order leaves the book only when the broker confirms it is no longer open; otherwise
+        it stays tracked and the cancel is retried on the next step."""
         late = self.broker.cancel_resting(o)
         fills = self._apply_maker_fill(o, late, snapshot) if late is not None else []
-        if o in self.portfolio.open_orders:
-            self.portfolio.open_orders.remove(o)
-        self.portfolio.count(stat)
+        if o.cancel_failures == 0 or self._finished(o):
+            if o in self.portfolio.open_orders:
+                self.portfolio.open_orders.remove(o)
+            self.portfolio.count(stat)
+        else:
+            self.on_event(f"cancel of {o.symbol} order in {o.group_id} not confirmed (attempt {o.cancel_failures});"
+                          f" still tracked, retrying next step")
+        self.on_state_change()
         return fills
 
     def _hedge_maker_fill(self, o: RestingOrder, maker_fill: Fill, snapshot: MarketSnapshot) -> list[Fill]:
@@ -173,8 +253,10 @@ class TradingEngine:
         h = o.hedge
         hedge = self.broker.execute([OrderIntent(o.group_id, h["exchange"], h["symbol"], h["market"], h["side"],
                                                  maker_fill.qty, reduce_only=h["reduce_only"], tag=o.tag)], snapshot)
-        for f in hedge:
-            self.portfolio.apply_fill(f)
+        self._apply_fills(hedge)
+        if any(f.unknown for f in hedge):  # it may have filled: unwinding now could leave the hedge naked
+            self.on_event(f"hedge state unknown in {o.group_id}; not unwinding the maker leg until it is resolved")
+            return hedge
         short = maker_fill.qty - sum(f.qty for f in hedge)
         if short <= EPS:
             return hedge
@@ -182,8 +264,7 @@ class TradingEngine:
         unwind = self.broker.execute([OrderIntent(o.group_id, o.exchange, o.symbol, o.market,
                                                   "sell" if o.side == "buy" else "buy", short,
                                                   reduce_only=True, tag="leg_unwind")], snapshot)
-        for f in unwind:
-            self.portfolio.apply_fill(f)
+        self._apply_fills(unwind)
         return hedge + unwind
 
     def close_group(self, group_id: str, snapshot: MarketSnapshot, tag: str) -> list[Fill]:
@@ -208,8 +289,7 @@ class TradingEngine:
         all_fills: list[Fill] = []
         for legs in groups.values():
             fills = self.broker.execute(legs, snapshot)
-            for f in fills:
-                self.portfolio.apply_fill(f)
+            self._apply_fills(fills)
             all_fills += fills
             if len(legs) > 1 and not all(l.reduce_only for l in legs):
                 all_fills += self._hedge_leg_failure(legs, fills, snapshot)
@@ -219,6 +299,9 @@ class TradingEngine:
 
     def _hedge_leg_failure(self, legs: list[OrderIntent], fills: list[Fill], snapshot: MarketSnapshot) -> list[Fill]:
         """If one leg of a hedge under-fills, unwind the excess on the others so the group stays hedged."""
+        if any(f.unknown for f in fills):
+            self.on_event(f"leg outcome unknown in {fills[0].group_id}; not unwinding until it is resolved")
+            return []
         ratio = min(f.qty / f.requested_qty for f in fills)
         unwinds = []
         for f in fills:
@@ -231,6 +314,5 @@ class TradingEngine:
             return []
         self.on_event(f"leg failure in {fills[0].group_id}: filled ratio {ratio:.2%}, unwinding {len(unwinds)} leg(s)")
         out = self.broker.execute(unwinds, snapshot)
-        for f in out:
-            self.portfolio.apply_fill(f)
+        self._apply_fills(out)
         return out

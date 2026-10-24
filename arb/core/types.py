@@ -84,6 +84,11 @@ class Fill:
     reduce_only: bool = False
     tag: str = ""
     maker: bool = False  # filled as a resting post-only order (maker fee, no spread)
+    # live only: the order reached (or may have reached) the exchange but its outcome could not be
+    # read back. qty is 0 but NOT a confirmed zero fill: the engine records it as unresolved
+    # (client_order_id), pauses entries and never unwinds/hedges against it until it is resolved.
+    unknown: bool = False
+    client_order_id: str | None = None
 
     @property
     def signed_qty(self) -> float:
@@ -109,6 +114,13 @@ class RestingOrder:
     hedge: dict  # the other leg: exchange, symbol, market, side, reduce_only
     exchange_order_id: str | None = None  # live only: the exchange's id for the current placement
     filled_on_exchange: float = 0.0  # live only: cumulative filled qty seen on the exchange order
+    # live only: client id of a placement whose outcome is unknown (create + lookups all failed);
+    # the broker resolves it by client id before it will place, re-place or forget the order
+    pending_client_id: str | None = None
+    # live only: consecutive cancels that did not confirm the order is gone; while > 0 the order
+    # may still be live on the exchange, so the engine keeps it and retries the cancel
+    cancel_failures: int = 0
+    done: bool = False  # live only: the exchange reports the order fully filled (or the rest is dust)
 
 
 @dataclass(frozen=True)

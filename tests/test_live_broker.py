@@ -181,3 +181,164 @@ def test_engine_maker_first_end_to_end_with_live_broker():
     assert pf.net_qty("okx", PERP, "swap") == pytest.approx(-0.002)
     assert pf.net_qty("okx", SPOT, "spot") == pytest.approx(0.002)
     assert [o["type"] for o in ex.created] == ["limit", "market"]
+
+
+# --- unknown order outcomes -------------------------------------------------------------------
+class LookupDown(FakeExchange):
+    """fetch_orders fails `lookup_failures` more times (the client-id lookup after a network error)."""
+    lookup_failures = 0
+
+    def fetch_orders(self, symbol=None, since=None):
+        if self.lookup_failures:
+            self.lookup_failures -= 1
+            raise ccxt.NetworkError("lookup down")
+        return super().fetch_orders(symbol, since)
+
+
+def make_lookup_down(failures):
+    ex = LookupDown([spot("BTC"), perp("BTC", contract_size=0.01, min_amount=0.01, step=0.01)],
+                    {SPOT: 100_000.0, PERP: 100_000.0})
+    ex.lookup_failures = failures
+    return ex, LiveBroker({"okx": ex}, CostModel(load_settings()), max_order_usd=300.0, sleep=lambda s: None)
+
+
+def test_failing_lookup_is_retried_and_finds_the_accepted_order():
+    ex, b = make_lookup_down(failures=2)  # fewer than the retries
+    ex.fail_next_create = ccxt.RequestTimeout("accepted, response lost")
+    [f] = b.execute([intent()], snap())
+    assert f.qty == pytest.approx(0.002) and not f.unknown and len(ex.created) == 1
+
+
+def test_lookup_down_for_good_reports_unknown_not_zero_then_resolves():
+    ex, b = make_lookup_down(failures=3)
+    ex.fail_next_create = ccxt.RequestTimeout("accepted, response lost")
+    [f] = b.execute([intent()], snap())
+    assert f.unknown and f.qty == 0 and f.client_order_id == ex.created[0]["clientOrderId"]
+    assert any("UNKNOWN order state" in e for e in b.events)
+    u = {"client_order_id": f.client_order_id, "group_id": "g1", "exchange": "okx", "symbol": SPOT,
+         "market": "spot", "side": "buy", "qty": 0.002, "reduce_only": False, "tag": "", "ts_ms": T0, "attempts": 0}
+    ex.lookup_failures = 3
+    assert b.resolve_order(u, snap()) is None and u["attempts"] == 1   # still unknown: keep it
+    r = b.resolve_order(u, snap())
+    assert r.qty == pytest.approx(0.002) and not r.unknown and len(ex.created) == 1
+
+
+def test_resolve_order_confirms_never_placed_as_zero():
+    ex, b = make()
+    u = {"client_order_id": "arbmissing", "group_id": "g1", "exchange": "okx", "symbol": SPOT, "market": "spot",
+         "side": "buy", "qty": 0.002, "reduce_only": False, "tag": "", "ts_ms": T0}
+    r = b.resolve_order(u, snap())
+    assert r is not None and r.qty == 0 and not r.unknown
+
+
+def test_fetch_failure_after_accepted_taker_is_unknown():
+    class FetchDown(FakeExchange):
+        def fetch_order(self, oid, symbol=None):
+            raise ccxt.ExchangeNotAvailable("down")
+    ex = FetchDown([spot("BTC")], {SPOT: 100_000.0})
+    ex.market_orders_stay_open = True
+    b = LiveBroker({"okx": ex}, CostModel(load_settings()), max_order_usd=300.0, sleep=lambda s: None)
+    [f] = b.execute([intent()], snap())
+    assert f.unknown and f.qty == 0
+
+
+def test_maker_placement_unknown_is_resolved_before_any_replacement():
+    ex, b = make_lookup_down(failures=3)
+    ex.fail_next_create = ccxt.RequestTimeout("accepted, response lost")
+    o = resting()
+    b.place_resting(o)
+    assert o.exchange_order_id is None and o.pending_client_id and len(ex.created) == 1
+    ex.lookup_failures = 3
+    assert b.check_resting(o, snap()) is None and len(ex.created) == 1   # still unknown: not re-placed
+    ex.lookup_failures = 3
+    b.cancel_resting(o)
+    assert o.cancel_failures == 1                                          # cannot confirm a cancel either
+    assert b.check_resting(o, snap()) is None                              # lookup works: adopted
+    assert o.pending_client_id is None and o.exchange_order_id == ex.created[0]["id"] and len(ex.created) == 1
+
+
+# --- cancel failures --------------------------------------------------------------------------
+class CancelDown(FakeExchange):
+    cancel_failures = 0
+
+    def cancel_order(self, oid, symbol=None):
+        if self.cancel_failures:
+            self.cancel_failures -= 1
+            raise ccxt.RequestTimeout("cancel timed out")
+        return super().cancel_order(oid, symbol)
+
+
+def test_failed_cancel_keeps_the_order_and_escalates():
+    ex = CancelDown([spot("BTC"), perp("BTC", contract_size=0.01, min_amount=0.01, step=0.01)],
+                    {SPOT: 100_000.0, PERP: 100_000.0})
+    b = LiveBroker({"okx": ex}, CostModel(load_settings()), max_order_usd=300.0, sleep=lambda s: None)
+    o = resting()
+    b.place_resting(o)
+    oid = o.exchange_order_id
+    ex.cancel_failures = 3
+    for n in (1, 2, 3):
+        assert b.cancel_resting(o) is None
+        assert o.exchange_order_id == oid and o.cancel_failures == n and ex.orders[oid]["status"] == "open"
+    assert "ESCALATE" in b.events[-1] and "cancel failed" in b.events[-1]
+    assert b.cancel_resting(o) is None
+    assert o.exchange_order_id is None and o.cancel_failures == 0      # 4th attempt went through
+    assert ex.orders[oid]["status"] == "canceled"
+
+
+def test_replace_with_failed_cancel_does_not_post_a_second_order():
+    ex = CancelDown([spot("BTC"), perp("BTC", contract_size=0.01, min_amount=0.01, step=0.01)],
+                    {SPOT: 100_000.0, PERP: 100_000.0})
+    b = LiveBroker({"okx": ex}, CostModel(load_settings()), max_order_usd=300.0, sleep=lambda s: None)
+    o = resting()
+    b.place_resting(o)
+    ex.cancel_failures = 1
+    b.replace_resting(o, 100_105.0)
+    assert len(ex.created) == 1 and o.price == 100_005.0 and o.cancel_failures == 1
+
+
+def test_engine_keeps_order_whose_cancel_failed():
+    ex = CancelDown([spot("BTC"), perp("BTC", contract_size=0.01, min_amount=0.01, step=0.01)],
+                    {SPOT: 100_000.0, PERP: 100_000.0})
+    b = LiveBroker({"okx": ex}, CostModel(load_settings()), max_order_usd=300.0, sleep=lambda s: None)
+    s = load_settings()
+    pf = Portfolio(1000.0)
+    legs = [OrderIntent("g1", "okx", SPOT, "spot", "buy", 0.002, exec_style="maker_first"),
+            OrderIntent("g1", "okx", PERP, "swap", "sell", 0.002, exec_style="maker_first", maker=True)]
+    eng = TradingEngine(Once(legs), b, pf, RiskManager(s, 1000.0), on_event=lambda m: None,
+                        execution=ExecutionCfg(entry_timeout_s=60))
+    eng.step(snap())
+    ex.cancel_failures = 1
+    eng.step(snap(T0 + 60_000))                     # entry timeout, cancel fails
+    assert len(pf.open_orders) == 1 and "entry_cancels" not in pf.exec_stats
+    eng.step(snap(T0 + 90_000))                     # retried
+    assert pf.open_orders == [] and pf.exec_stats["entry_cancels"] == 1
+    assert all(o["status"] != "open" for o in ex.orders.values())
+
+
+# --- dust ---------------------------------------------------------------------------------------
+def test_maker_qty_rounded_to_tradable_amount_at_placement():
+    ex, b = make()
+    o = resting(qty=0.0019999)                      # 0.19999 contracts -> 0.19
+    b.place_resting(o)
+    assert ex.created[0]["amount"] == pytest.approx(0.19) and o.qty == pytest.approx(0.0019)
+    ex.fill_resting(o.exchange_order_id)
+    f = b.check_resting(o, snap())
+    assert f.qty == pytest.approx(0.0019) and o.done
+
+
+def test_fully_filled_closed_order_is_done_even_if_net_qty_differs():
+    """Spot maker buy with the fee taken in BTC: the fill is net of the fee, the order is still done."""
+    ex, b = make(fee_in_base_on_spot_buy=True)
+    o = RestingOrder("o1", "g1", "okx", SPOT, "spot", "buy", 0.002, 99_995.0, T0, T0, False, "entry",
+                     {"exchange": "okx", "symbol": PERP, "market": "swap", "side": "sell", "reduce_only": False})
+    b.place_resting(o)
+    ex.fill_resting(o.exchange_order_id)
+    f = b.check_resting(o, snap())
+    assert f.qty < 0.002 and o.done                 # remainder (the fee) is not left resting
+
+
+def test_remainder_below_exchange_minimum_is_done():
+    ex, b = make()
+    o = resting(qty=0.00005)                        # 0.005 contracts < min 0.01
+    b.place_resting(o)
+    assert o.done and ex.created == [] and "treated as done" in b.events[-1]
