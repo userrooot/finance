@@ -137,7 +137,9 @@ contract FlashArb is IFlashLoanSimpleReceiverMinimal, Ownable2Step, Pausable, Re
         _unpause();
     }
 
-    function setToken(address token, bool allowed, uint256 maxLoanAmount) external onlyOwner {
+    // SECURITY (review SEC-2): config setters are nonReentrant so that a contract owner reachable from a token hook
+    // cannot change the whitelist, caps or a pool's cached tokens/fee while a route is in flight.
+    function setToken(address token, bool allowed, uint256 maxLoanAmount) external onlyOwner nonReentrant {
         if (token.code.length == 0) revert NotAContract(token);
         // SPEC-DEVIATION: the spec names no error for "maxLoanAmount > 0 requires allowed";
         // TokenNotAllowed(token) is the closest exact-named error.
@@ -147,7 +149,7 @@ contract FlashArb is IFlashLoanSimpleReceiverMinimal, Ownable2Step, Pausable, Re
         emit TokenSet(token, allowed, maxLoanAmount);
     }
 
-    function setPool(address pool, Venue venue, uint16 feeBps, bool enabled) external onlyOwner {
+    function setPool(address pool, Venue venue, uint16 feeBps, bool enabled) external onlyOwner nonReentrant {
         PoolInfo storage p = pools[pool];
         if (!enabled) {
             p.enabled = false;
@@ -189,7 +191,9 @@ contract FlashArb is IFlashLoanSimpleReceiverMinimal, Ownable2Step, Pausable, Re
 
         IAavePoolMinimal(AAVE_POOL).flashLoanSimple(address(this), loanToken, route.loanAmount, params, 0);
 
-        _routeHash = 0;
+        // SECURITY (review SEC-1): executeOperation consumes the hash. If it is still set, the loan callback never
+        // ran (e.g. AAVE_POOL accepted the call without lending), so nothing was executed: do not report success.
+        if (_routeHash != bytes32(0)) revert LoanMismatch();
         if (IERC20(loanToken).allowance(address(this), AAVE_POOL) != 0) {
             IERC20(loanToken).forceApprove(AAVE_POOL, 0);
         }
@@ -255,6 +259,7 @@ contract FlashArb is IFlashLoanSimpleReceiverMinimal, Ownable2Step, Pausable, Re
         bytes32 rh = _routeHash;
         if (rh == bytes32(0)) revert NoActiveRoute();
         if (keccak256(params) != rh) revert RouteHashMismatch();
+        _routeHash = 0; // one callback per loan (review SEC-1); a second call for the same loan hits NoActiveRoute
 
         _runRoute(asset, amount, premium, params);
 

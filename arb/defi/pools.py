@@ -33,6 +33,7 @@ SLIPSTREAM_KEYS = {"aerodrome_slipstream_initial": "initial_deployment",
                    "aerodrome_slipstream_gaugesv3": "gauges_v3_deployment"}
 STABLES = {"USDC", "USDT", "DAI", "USDC.e"}
 SUSHI_V2_FEE_BPS = 30
+MAX_FEED_AGE_S = 25 * 3600  # Chainlink ETH/USD heartbeat: 24 h on Arbitrum, 20 min on Base; older = stale (error)
 
 
 def sel(signature: str) -> bytes:
@@ -324,9 +325,14 @@ async def build_registry(client: ChainClient, chain: str, addresses: dict, cfg: 
 
     # 1. static filter from addresses.json
     cands: list[dict] = []
+    seen: set[str] = set()
     for e in ch["pools"]:
         if e["dex"] not in ccfg.venues or e["dex"] not in (V3_DEXES | V2_DEXES):
             continue
+        if e["pool"].lower() in seen:  # listed twice (e.g. under two dex names): one PoolSpec per address
+            rejected.append({"pool": e["pool"], "dex": e["dex"], "reason": "duplicate pool address"})
+            continue
+        seen.add(e["pool"].lower())
         a, b = e["pair"].split("/")
         if a not in tokens or b not in tokens:
             continue
@@ -402,14 +408,66 @@ async def build_registry(client: ChainClient, chain: str, addresses: dict, cfg: 
             "aerodrome_factory": (ch["dexes"].get("aerodrome_v2", {}).get("pool_factory", "") or "").lower(),
             "rejected": rejected, "tvl_usd": tvl}
     reg = PoolRegistry(chain, tokens, pools, meta)
+    entries = {i["e"]["pool"].lower(): i["e"] for i in info}
+    reg = await _drop_dust_pools(client, reg, entries, cfg.min_pool_tvl_usd, block)
     reg.save(cache_path)
     return reg
+
+
+async def _drop_dust_pools(client: ChainClient, reg: PoolRegistry, entries: dict[str, dict], min_tvl: float,
+                           block: int) -> PoolRegistry:
+    """Second TVL pass (review T4, issue P-06). Step 1 can only price USD stables and WETH, so pools of two
+    unpriced tokens (WBTC/ARB, cbBTC/cbETH) were all kept, including 51-satoshi dust pools whose absurd marginal
+    rates inflate `screened_in`. Here every token gets a price from the deepest *already-sized* pool against a
+    priced token (same rule as the scanner), and a pool is dropped when its recorded balances are worth less than
+    `min_pool_tvl_usd`. A pool stays when any of its tokens cannot be priced reliably, or the snapshot fails."""
+    from arb.defi.scanner import compute_token_usd  # lazy: scanner imports this module
+
+    unsized = [p for p in reg.pools if p.address not in reg.tvl_usd]
+    if not unsized:
+        reg.meta["dust_pass"] = "nothing to size"
+        return reg
+    try:
+        snap = await read_snapshot(client, reg, block)
+    except Exception as e:  # keep everything: a missing second pass only costs screening noise
+        reg.meta["dust_pass"] = f"skipped: {type(e).__name__}: {str(e)[:160]}"
+        return reg
+    usd, notes = compute_token_usd(reg, snap)
+    reliable: dict[str, float] = {}
+    for sym, px in usd.items():
+        src = notes.get(sym, "").rsplit(" ", 1)[-1]
+        if sym in STABLES or sym == "WETH" or reg.tvl_usd.get(src, 0.0) >= min_tvl:
+            reliable[sym] = px
+    keep: list[PoolSpec] = []
+    tvl = dict(reg.tvl_usd)
+    for p in reg.pools:
+        e = entries.get(p.address)
+        if p.address in tvl or e is None:
+            keep.append(p)
+            continue
+        syms = e["pair"].split("/")
+        bals = [e.get(f"balance_{s}") for s in syms]
+        if any(b is None for b in bals) or any(s not in reliable for s in syms):
+            keep.append(p)
+            continue
+        est = sum(float(b) * reliable[s] for s, b in zip(syms, bals))
+        if est < min_tvl:
+            reg.meta["rejected"].append({"pool": p.address, "dex": p.dex,
+                                         "reason": f"dust: TVL ${est:,.2f} from derived token prices"})
+            continue
+        tvl[p.address] = est
+        keep.append(p)
+    meta = dict(reg.meta, tvl_usd=tvl, dust_pass=f"done at block {block}")
+    return PoolRegistry(reg.chain, reg.tokens, keep, meta)
 
 
 async def load_or_build_registry(client: ChainClient, chain: str, addresses: dict, cfg: "DefiCfg",
                                  cache_path: Path, refresh: bool = False) -> PoolRegistry:
     if cache_path.exists() and not refresh:
-        return PoolRegistry.from_json(json.loads(cache_path.read_text(encoding="utf-8")))
+        reg = PoolRegistry.from_json(json.loads(cache_path.read_text(encoding="utf-8")))
+        if "dust_pass" in reg.meta:
+            return reg
+        # cache written before the second TVL pass existed (review T4): rebuild so dust pools are dropped
     return await build_registry(client, chain, addresses, cfg, cache_path)
 
 
@@ -489,6 +547,10 @@ async def read_snapshot(client: ChainClient, registry: PoolRegistry, block: int)
                     if eth_usd <= 0:
                         eth_usd = 0.0
                         raise ValueError("non-positive price")
+                    age = header.timestamp - word(r[0].data, 3)  # latestRoundData word 3 = updatedAt
+                    if age > MAX_FEED_AGE_S:
+                        eth_usd = 0.0
+                        raise ValueError(f"stale: updatedAt is {age} s before the block (max {MAX_FEED_AGE_S} s)")
                 else:
                     states[spec.address] = _decode_pool(spec, r, block)
             except Exception as e:

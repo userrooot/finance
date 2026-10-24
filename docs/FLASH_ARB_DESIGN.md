@@ -24,7 +24,7 @@ One source only: **Aave v3 `Pool.flashLoanSimple`** (selector `0x42b0b77c`).
 | Arbitrum One (42161) | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` | WETH, USDC (native) | 5 bps |
 | Base (8453) | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` | WETH, USDC | 5 bps |
 
-- Premium formula (Aave `PercentageMath.percentMul`): `premium = (amount * 5 + 5000) / 10000` (integer division, rounds half up). The contract never computes this itself. It uses the `premium` argument Aave passes. Python uses the formula for quoting. A fork test checks that the two agree.
+- Premium formula (Aave `PercentageMath.percentMul`): `premium = (amount * 5 + 9999) / 10000` (integer division, rounds UP; verified on-chain on both chains: 999 -> 1, 1,000,000,000 -> 500,000, see docs/FLASH_ARB_LOOKUPS.md; an earlier draft said half-up, which is wrong for small amounts). The contract never computes this itself. It uses the `premium` argument Aave passes. Python uses the formula for quoting. A fork test checks that the two agree.
 - USDC.e on Arbitrum is **not** a loan token in v1 (the reserve reads as frozen). It is not an allowed token at all in v1.
 - Out of v1: Uniswap v3 `flash()`, Balancer (exploit history), multi-asset `flashLoan`, liquidations.
 
@@ -217,8 +217,8 @@ Plus OZ state: owner, pending owner, paused flag, reentrancy status.
 | `executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata params) returns (bool)` | none (guarded by checks) | Section 3.7. |
 | `uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata)` | none (guarded) | Calls `_onV3Callback`. Section 3.8. |
 | `pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata)` | none (guarded) | Calls `_onV3Callback`. |
-| `setToken(address token, bool allowed, uint256 maxLoanAmount)` | `onlyOwner` | Requires code. `maxLoanAmount > 0` requires `allowed`. Emits `TokenSet`. |
-| `setPool(address pool, Venue venue, uint16 feeBps, bool enabled)` | `onlyOwner` | On enable: requires code; reads `token0()`/`token1()`; both must be `allowedToken`; `feeBps` in 1..100 for `UNI_V2`, else 0, otherwise `InvalidPoolConfig`. On disable: sets `enabled = false`. Emits `PoolSet`. |
+| `setToken(address token, bool allowed, uint256 maxLoanAmount)` | `onlyOwner nonReentrant` (review SEC-2) | Requires code. `maxLoanAmount > 0` requires `allowed`. Emits `TokenSet`. |
+| `setPool(address pool, Venue venue, uint16 feeBps, bool enabled)` | `onlyOwner nonReentrant` (review SEC-2) | On enable: requires code; reads `token0()`/`token1()`; both must be `allowedToken`; `feeBps` in 1..100 for `UNI_V2`, else 0, otherwise `InvalidPoolConfig`. On disable: sets `enabled = false`. Emits `PoolSet`. |
 | `pause()` / `unpause()` | `onlyOwner` | OZ. |
 | `sweep(address token, uint256 amount)` | `onlyOwner nonReentrant` | Sends `amount` (or the full balance if `type(uint256).max`) to `owner()`. Emits `Swept`. |
 | `transferOwnership` / `acceptOwnership` / `owner` / `pendingOwner` | OZ | |
@@ -237,7 +237,7 @@ No `receive`, no `fallback`, nothing `payable`.
 2. `balBefore = IERC20(loanToken).balanceOf(address(this))`.
 3. `params = abi.encode(balBefore, route)`; `_routeHash = keccak256(params)`.
 4. `IAavePoolMinimal(AAVE_POOL).flashLoanSimple(address(this), loanToken, loanAmount, params, 0)`.
-5. `_routeHash = 0`. If `allowance(this, AAVE_POOL) != 0`, `forceApprove(AAVE_POOL, 0)`.
+5. Require `_routeHash == 0` (`executeOperation` consumed it, so the callback ran), else `LoanMismatch()` (review SEC-1). If `allowance(this, AAVE_POOL) != 0`, `forceApprove(AAVE_POOL, 0)`.
 6. `balAfter = balanceOf(this)`. Require `balAfter >= balBefore + minProfit` (`InsufficientProfit(balAfter, balBefore + minProfit)`). `profit = balAfter - balBefore`.
 7. If `profit > 0`, `safeTransfer(loanToken, owner(), profit)`.
 8. Read and clear `_lastPremium` (set by `executeOperation` step 7). `emit ArbExecuted(keccak256(params), loanToken, loanAmount, premium, profit)`. Return `profit`.
@@ -248,7 +248,7 @@ After a successful `executeArb`, the contract's balance of every token is exactl
 
 1. `msg.sender == AAVE_POOL`, else `NotAavePool()`.
 2. `initiator == address(this)`, else `BadInitiator(initiator)`.
-3. `_routeHash != 0`, else `NoActiveRoute()`. `keccak256(params) == _routeHash`, else `RouteHashMismatch()`.
+3. `_routeHash != 0`, else `NoActiveRoute()`. `keccak256(params) == _routeHash`, else `RouteHashMismatch()`. Then `_routeHash = 0` (consumed: one callback per loan; review SEC-1).
 4. `(uint256 balBefore, Route memory route) = abi.decode(params, (uint256, Route))`. Require `asset == route.loanToken && amount == route.loanAmount`, else `LoanMismatch()`.
 5. Loan receipt check: `balanceOf(asset) == balBefore + amount`, else `BalanceDeltaMismatch(LOAN_STEP, asset, balBefore + amount, actual)`.
 6. `uint256 x = amount; for i: x = _swap(i, route.hops[i], x);` each emits `HopExecuted(i, pool, amountIn, amountOut)`.
@@ -367,6 +367,8 @@ contract FlashArbSimHarness {
         // 5. gasUsed = g0 - gasleft();
         // 6. profit = balanceOf(this) - before; if ok, require abi.decode(ret,(uint256)) == profit,
         //    else ok = false, ret = abi.encodeWithSignature("HarnessProfitMismatch(uint256,uint256)", returned, profit)
+        // (review SEC-3) before step 3: calldata must start with 0xe77fcf52, head offset 0x20 and route.loanToken == loanToken,
+        //    and a successful return must be 32 bytes; otherwise ok = false, ret = abi.encodeWithSignature("HarnessBadCalldata()")
         // 7. bytes memory out = abi.encode(ok, profit, gasUsed, ok ? bytes("") : ret);
         //    assembly { return(add(out, 32), mload(out)) }
     }

@@ -19,7 +19,7 @@ from arb.costs import CostModel
 from arb.defi.chain import SIM_CALLER, ChainClient
 from arb.defi.pools import (STABLES, Call, Multicall, PoolRegistry, PoolSpec, PoolState, Snapshot, V2State, V3State,
                             read_snapshot, read_ticks, sel, word)
-from arb.defi.quote import SizeResult, aave_premium, marginal_rate, optimal_amount, quote_route
+from arb.defi.quote import SizeResult, aave_premium, at_edge, marginal_rate, optimal_amount, quote_route
 from arb.defi.route import Hop, Route, Venue, encode_execute_arb
 from arb.defi.v3math import Q96
 from arb.models import Leg, Opportunity
@@ -30,7 +30,7 @@ S_L1_FEE_UPPER_BOUND = sel("getL1FeeUpperBound(uint256)")  # 0xf1c7a58b
 S_GAS_ESTIMATE_L1 = sel("gasEstimateL1Component(address,bool,bytes)")  # 0x77d488a2
 assert S_L1_FEE_UPPER_BOUND.hex() == "f1c7a58b" and S_GAS_ESTIMATE_L1.hex() == "77d488a2"
 L1_SIZE_PAD = 100  # Base: size passed to getL1FeeUpperBound = calldata length + 100
-
+WIDE_TICK_WORDS = 4  # bitmap words each side for the second tick read when the optimum hit the first window's edge
 
 def short(addr: str) -> str:
     return f"{addr[:6]}..{addr[-4:]}"
@@ -144,6 +144,24 @@ def calldata_len(n_hops: int) -> int:
     return len(encode_execute_arb(dummy_route(n_hops)))  # 548 for 2 hops, 708 for 3, +160 per extra hop
 
 
+def _pseudo_addr(tag: str) -> str:
+    from eth_utils import keccak
+    return "0x" + keccak(text=tag)[:20].hex()
+
+
+def l1_probe_route(n_hops: int) -> Route:
+    """Route with the byte statistics of a real one, for Arbitrum's L1 estimate (review T4, issue P-05).
+
+    Arbitrum prices L1 data on the brotli-compressed tx. The all-zero `dummy_route` compresses far better than a
+    real route (random-looking addresses, 18-digit amounts) and under-estimated gasEstimateForL1 by ~35% live.
+    This route has incompressible addresses with the real repetition pattern (each token appears as tokenOut of
+    hop i and tokenIn of hop i+1; the loan token opens and closes the route), so its length equals `calldata_len`."""
+    tokens = [_pseudo_addr(f"l1-probe-token-{i}") for i in range(n_hops)]
+    hops = tuple(Hop(_pseudo_addr(f"l1-probe-pool-{i}"), tokens[i], tokens[(i + 1) % n_hops],
+                     Venue.UNI_V3 if i % 2 == 0 else Venue.UNI_V2, i % 2 == 0) for i in range(n_hops))
+    return Route(tokens[0], 1_234_567_890_123_456_789, 98_765_432_101_234, 1_792_900_000, hops)
+
+
 def _spot_price(state: PoolState, token_addr: str) -> float | None:
     """Raw other-per-raw token price of `token_addr` in `state`'s pool (marginal, no fee)."""
     pool = state.pool
@@ -210,12 +228,15 @@ async def read_block_costs(client: ChainClient, registry: PoolRegistry, snapshot
             l1[n] = word(r.data, 0)
     elif registry.chain == "arbitrum":
         for n in hop_counts:
-            cd = encode_execute_arb(dummy_route(n))
+            cd = encode_execute_arb(l1_probe_route(n))
             data = S_GAS_ESTIMATE_L1 + eth_abi.encode(["address", "bool", "bytes"], [SIM_CALLER, False, cd])
             raw = await client.eth_call(ARBITRUM_NODE_INTERFACE, data, snapshot.block)
             if len(raw) < 32:
                 raise RuntimeError(f"arbitrum: gasEstimateL1Component({n} hops) returned no data")
-            l1[n] = word(raw, 0) * snapshot.base_fee_wei  # gasEstimateForL1 (L2 gas units) x base fee
+            # returns (gasEstimateForL1, baseFee, l1BaseFeeEstimate): gasEstimateForL1 = L1 fee / baseFee, so the
+            # fee in wei is gasEstimateForL1 x that same baseFee (falls back to the header's base fee)
+            nb = word(raw, 1) if len(raw) >= 64 else 0
+            l1[n] = word(raw, 0) * (nb or snapshot.base_fee_wei)
     else:
         raise ValueError(f"no L1 data fee model for chain {registry.chain}")
     return BlockCosts(registry.chain, snapshot.block, snapshot.base_fee_wei, int(round(ccfg.tip_gwei * 1e9)), l1,
@@ -228,6 +249,7 @@ class Assessment:
     screened: bool = False
     gross_positive: bool = False
     opportunity: Opportunity | None = None
+    window_capped: bool = False  # optimum at the edge of the loaded v3 tick window (true optimum may be larger)
 
 
 def _wei_to_usd(wei: int, eth_usd: float) -> float:
@@ -264,6 +286,8 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
     dec = loan_tok.decimals
     max_in = _max_in_raw(settings, price, dec)
     size = optimal_amount(states, candidate.hops, max_in, cfg.premium_bps)
+    at_max_in = at_edge(size.amount_in, max_in)
+    out.window_capped = size.capped and not at_max_in and any(isinstance(s, V3State) for s in states)
     if size.amount_in <= 0 or size.profit_raw <= 0 or any(q.exhausted for q in size.quotes):
         return out
     out.gross_positive = True
@@ -328,7 +352,7 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
                             "amount_out": q.amount_out, "fee_paid": q.fee_paid})
     risk = sorted(x for x in notes if x)
     if size.capped:
-        risk.append("v3 window edge reached" if any(isinstance(s, V3State) for s in states) else "capped at max_loan_usd")
+        risk.append("capped at max_loan_usd" if at_max_in else "v3 window edge reached")
     if any(p.dex.startswith("aerodrome_slipstream") for p in candidate.pools):
         risk.append("slipstream fee is dynamic (read per block)")
     after_tax = CostModel(settings).after_tax(net)
@@ -402,15 +426,34 @@ async def scan_block(client: ChainClient, registry: PoolRegistry, block: int, se
     if v3_pools:
         snap = await _read_ticks_safe(client, snap, v3_pools, errors)
         # candidates that lost a pool to a tick-read failure are not evaluated; the failure is in `errors`
-    opps: list[Opportunity] = []
-    gross = 0
+    results: dict[str, Assessment] = {}
     for c in screened:
         if not all(p.address in snap.states for p in c.pools):
             continue
         try:
-            a = assess(c, snap, costs, settings)
+            results[c.key] = assess(c, snap, costs, settings)
         except Exception as e:
             errors.append(f"evaluate {c.key}: {type(e).__name__}: {str(e)[:200]}")
+    # optimum at the tick-window edge: load a wider window for those pools and size again (review T4, issue P-09),
+    # so a large gap is not silently reported at the size the first window happened to allow
+    wide = [c for c in screened if c.key in results and results[c.key].window_capped]
+    if wide:
+        wide_pools = {p.address for c in wide for p in c.pools if p.is_v3}
+        snap = await _read_ticks_safe(client, snap, wide_pools, errors, WIDE_TICK_WORDS)
+        for c in wide:
+            if not all(p.address in snap.states for p in c.pools):
+                results.pop(c.key, None)
+                continue
+            try:
+                results[c.key] = assess(c, snap, costs, settings)
+            except Exception as e:
+                results.pop(c.key, None)
+                errors.append(f"evaluate {c.key}: {type(e).__name__}: {str(e)[:200]}")
+    opps: list[Opportunity] = []
+    gross = 0
+    for c in screened:
+        a = results.get(c.key)
+        if a is None:
             continue
         if a.gross_positive:
             gross += 1
@@ -422,10 +465,11 @@ async def scan_block(client: ChainClient, registry: PoolRegistry, block: int, se
     return done(ts_ms, len(cands), len(screened), gross, opps)
 
 
-async def _read_ticks_safe(client: ChainClient, snap: Snapshot, pools: set[str], errors: list[str]) -> Snapshot:
+async def _read_ticks_safe(client: ChainClient, snap: Snapshot, pools: set[str], errors: list[str],
+                           words_each_side: int = 1) -> Snapshot:
     before = len(snap.errors)
     try:
-        new = await read_ticks(client, snap, pools)
+        new = await read_ticks(client, snap, pools, words_each_side)
     except Exception as e:
         errors.append(f"ticks: {type(e).__name__}: {str(e)[:200]}")
         states = {a: s for a, s in snap.states.items() if a not in pools}

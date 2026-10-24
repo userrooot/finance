@@ -104,10 +104,10 @@ def test_sim_record_classifies_hit_below_threshold_and_miss():
     assert fail["data_failure"] and fail["hit"] is None and fail["error"].startswith("StateUnavailable")
 
 
-def synthetic(n_episodes, hit_net=0.50, hits_at_k=None, df_rate=0.0):
-    """n_episodes distinct episodes over 3600 s, each replayed at every offset (k=8 hit iff in `hits_at_k`)."""
+def synthetic(n_episodes, hit_net=0.50, hits_at_k=None, df_rate=0.0, n_samples=2400):
+    """n_episodes distinct episodes over n_samples x 10 s, each replayed at every offset (k=8 hit iff in `hits_at_k`).
+    2400 samples (6.67 h) clears the 2000-complete-samples minimum of the verdict."""
     blocks, sims = [], []
-    n_samples = 360
     keys = [f"k{i}" for i in range(n_episodes)]
     for i in range(1, n_samples + 1):
         ks = [keys[i - 1]] if i <= n_episodes else []
@@ -123,10 +123,12 @@ def synthetic(n_episodes, hit_net=0.50, hits_at_k=None, df_rate=0.0):
 def test_compute_chain_metrics_tables_and_go_verdict():
     blocks, sims = synthetic(40, hits_at_k=set(range(40)))
     m = compute_chain_metrics("arbitrum", blocks, sims, CCFG, SETTINGS)
-    assert m["samples"] == 360 and m["complete"] == 360 and m["data_failure_rate"] == 0.0
-    assert m["episodes"] == 40 and m["hours"] == pytest.approx(1.0) and m["episodes_per_day"] == pytest.approx(960)
-    assert m["surviving_rate"] == pytest.approx(40 / 360) and m["gross_rate"] == pytest.approx(40 / 360)
-    assert m["kinds"]["two_pool"]["episodes_per_day"] == pytest.approx(960) and m["kinds"]["triangular"]["episodes_per_day"] == 0
+    assert m["samples"] == 2400 and m["complete"] == 2400 and m["data_failure_rate"] == 0.0
+    hours = 2400 * 10 / 3600
+    assert m["episodes"] == 40 and m["hours"] == pytest.approx(hours) and m["episodes_per_day"] == pytest.approx(40 / hours * 24)
+    assert m["route_key_episodes_per_day"] == pytest.approx(m["episodes_per_day"])  # no correlated routes here
+    assert m["surviving_rate"] == pytest.approx(40 / 2400) and m["gross_rate"] == pytest.approx(40 / 2400)
+    assert m["kinds"]["two_pool"]["episodes_per_day"] == pytest.approx(40 / hours * 24) and m["kinds"]["triangular"]["episodes_per_day"] == 0
     assert m["kinds"]["two_pool"]["net_med"] == 0.5 and m["kinds"]["two_pool"]["capacity_med"] == 1000.0
     assert m["persistence"] == {0: 1.0, 2: 1.0, 8: 1.0}
     assert m["realistic_k"] == 8
@@ -167,14 +169,17 @@ def test_overall_verdict():
 
 
 def test_report_renders_all_seven_tables_even_with_no_data():
-    blocks, sims = synthetic(40, hits_at_k=set(range(40)))
+    blocks, sims = synthetic(40, hits_at_k=set(range(40)), n_samples=360)
     m = compute_chain_metrics("arbitrum", blocks, sims, CCFG, SETTINGS)
     text = render_report([m], {"arbitrum": {"mode": "live", "rpc_errors": {"RateLimited": 3}, "state_window_blocks": 345600,
                                            "sim_backend": "public RPC"}}, date(2026, 10, 25), date(2026, 10, 26))
     for h in ("## 1. Coverage", "## 2. Gap test", "## 3. Persistence", "## 4. Replay", "## 5. Top 15 keys",
               "## 6. Quote accuracy", "## 7. Verdict"):
         assert h in text
-    assert "RateLimited: 3" in text and "VERDICT: GO-TO-NEXT-PHASE" in text and "only 360 complete samples" in text
+    assert "RateLimited: 3" in text and "only 360 complete samples" in text
+    # review T4 (M-02): 360 samples (1 h) can no longer produce a GO, whatever the projection says
+    assert "VERDICT: INCONCLUSIVE (DATA)" in text and "complete samples < 2000" in text
+    assert "median scan latency" in text and "route keys:" in text
     empty = compute_chain_metrics("base", [], [], SETTINGS.defi.chains["base"], SETTINGS)
     t2 = render_report([empty], {}, date(2026, 10, 25), date(2026, 10, 25))
     assert "INCONCLUSIVE (DATA)" in t2 and "## 6. Quote accuracy" in t2
@@ -204,7 +209,7 @@ def test_store_partitions_by_day_and_feeds_the_standard_report(tmp_path):
 def test_build_defi_report_from_disk(tmp_path):
     st = SETTINGS.model_copy(update={"defi": defi_cfg(storage_dir=str(tmp_path))})
     store = DefiStore(tmp_path, "arbitrum")
-    blocks, sims = synthetic(5)
+    blocks, sims = synthetic(5, n_samples=360)
     for r in blocks:
         r["timestamp"] = int(__import__("datetime").datetime(2026, 10, 25, 12, tzinfo=__import__("datetime").timezone.utc).timestamp()) + r["block"]
     for r in sims:
@@ -247,15 +252,17 @@ async def test_run_measurement_samples_replays_each_episode_once_and_records_fai
                                     max_samples=3, clock=lambda: 1_800_000_000 + clock.t, sleep=clock.sleep, wait=no_wait,
                                     on_sample=seen.append)
     assert summary.samples == 3 and summary.incomplete == 0 and len(seen) == 3
-    # the same gaps persist in all three samples (static fake chain): each key is an episode once
+    # the same gap persists in all three samples (static fake chain). Its two surviving routes (WETH loan
+    # sushi>camelot, USDC loan camelot>sushi) share both pools: one attempt, one episode, replayed once (review M-01)
     n_keys = len(seen[0]["surviving_keys"])
-    assert n_keys >= 2 and summary.episodes_started == n_keys
-    assert summary.replays == n_keys * 3
+    assert n_keys >= 2 and summary.episodes_started == 1 and len(seen[0]["attempt_keys"]) == 1
+    assert seen[0]["attempt_keys"][0] == max(seen[0]["surviving"], key=lambda s: s["net_usd"])["key"]
+    assert summary.replays == 3
     day = date(2027, 1, 15)
     ts = seen[0]["timestamp"]
     d = __import__("datetime").datetime.fromtimestamp(ts, __import__("datetime").timezone.utc).date()
     blocks, sims = store.load_blocks(d), store.load_sims(d)
-    assert len(blocks) == 3 and len(sims) == n_keys * 3
+    assert len(blocks) == 3 and len(sims) == 3
     assert set(sims["offset"]) == {0, 2, 8}
     k8 = sims[sims["offset"] == 8]
     assert k8["data_failure"].all() and k8["error"].str.startswith("StateUnavailable").all()
@@ -325,3 +332,97 @@ def test_backend_label_never_contains_the_url_path():
     assert measure.backend_label(a, a) == "same RPC as state reads"
     label = measure.backend_label(a, b)
     assert "rpc.example.com" in label and "SECRETKEY" not in label
+
+
+# ---- review T4 regressions (each fails on the pre-review code) ------------------------------------------------------
+A = "sushi_v2:0xaaaa..0001"
+B = "camelot_v2:0xbbbb..0002"
+C = "uniswap_v3:0xcccc..0003"
+D = "uniswap_v3:0xdddd..0004"
+
+
+def test_m01_routes_sharing_a_pool_are_one_attempt_not_several_episodes():
+    """One mispriced pair seen as WETH-loan A>B, USDC-loan B>A and a triangle through A: one gap, one attempt."""
+    weth_ab, usdc_ba, tri = f"arbitrum WETH {A}>{B}", f"arbitrum USDC {B}>{A}", f"arbitrum WETH {A}>{C}>{D}"
+    other = f"arbitrum WETH {C}>{D}"  # disjoint from the first gap? no: shares C and D with the triangle
+    b1 = brow(1, [])
+    b1["surviving"] = [{"key": weth_ab, "kind": "two_pool", "net_usd": 0.40, "capacity_usd": 1.0},
+                       {"key": usdc_ba, "kind": "two_pool", "net_usd": 0.39, "capacity_usd": 1.0},
+                       {"key": tri, "kind": "triangular", "net_usd": 0.10, "capacity_usd": 1.0},
+                       {"key": other, "kind": "two_pool", "net_usd": 0.20, "capacity_usd": 1.0}]
+    assert [s["key"] for s in measure.select_attempts(b1["surviving"])] == [weth_ab, other]
+    # next sample: the USDC direction is now the better route of the same gap -> a continuation, not a new episode
+    b2 = brow(2, [])
+    b2["surviving"] = [dict(b1["surviving"][0], net_usd=0.30), dict(b1["surviving"][1], net_usd=0.35)]
+    eps = find_episodes([b1, b2])
+    assert [e["key"] for e in eps] == [weth_ab, other]
+    assert len(find_episodes([b1, b2], by_route_key=True)) == 4  # the old count: every route its own episode
+    assert measure.key_pools(weth_ab) == {"0xaaaa..0001", "0xbbbb..0002"}
+
+
+def test_m01_projection_uses_independent_attempts():
+    blocks, sims = synthetic(40, hits_at_k=set(range(40)))
+    for b in blocks:  # every episode (its own pair of pools) is seen through a second route (opposite loan token)
+        b["surviving"] = [dict(s, key=f"arbitrum WETH sushi_v2:0xa-{s['key']}>camelot_v2:0xb-{s['key']}")
+                          for s in b["surviving"]]
+        b["surviving"] += [dict(s, key=s["key"].replace("WETH", "USDC"), net_usd=0.1) for s in b["surviving"]]
+    m = compute_chain_metrics("arbitrum", blocks, sims, CCFG, SETTINGS)
+    assert m["route_key_episodes_per_day"] == pytest.approx(2 * m["episodes_per_day"])
+    assert m["replay"][8]["projected_per_day"] == pytest.approx(m["episodes_per_day"] * m["replay"][8]["ev_after_tax"])
+
+
+def test_m02_verdict_needs_2000_complete_samples():
+    blocks, sims = synthetic(40, hits_at_k=set(range(40)), n_samples=360)  # 1 hour, 40 profitable episodes
+    m = compute_chain_metrics("arbitrum", blocks, sims, CCFG, SETTINGS)
+    assert m["replay"][8]["projected_per_day"] > 1.0
+    assert m["verdict"] == "INCONCLUSIVE (DATA)"  # the old code said GO-TO-NEXT-PHASE
+    assert m["verdict_inputs"]["inconclusive_because"] == ["complete samples < 2000"]
+
+
+def test_m02_verdict_inconclusive_when_replays_mostly_failed_to_run():
+    blocks, sims = synthetic(40, hits_at_k=set(range(40)))
+    extra = [dict(srow(f"x{i}", 8, 0, df=True)) for i in range(5)]  # 5 / 45 = 11% of k=8 replays did not run
+    m = compute_chain_metrics("arbitrum", blocks, sims + extra, CCFG, SETTINGS)
+    assert m["verdict"] == "INCONCLUSIVE (DATA)" and "replay data-failure rate" in m["verdict_inputs"]["inconclusive_because"]
+
+
+def test_m03_sampled_hours_follow_real_time_when_sampling_slows_down():
+    # 180 samples 10 s apart, then 180 samples 30 s apart (rate-limit back-off): 1800 + 5400 s observed
+    ts = [T0 + 10 * i for i in range(180)] + [T0 + 1800 + 30 * i for i in range(180)]
+    blocks = [brow(i + 1, ts=t) for i, t in enumerate(ts)]
+    assert sampled_hours(blocks, 10) == pytest.approx(7200 / 3600, rel=0.01)  # old formula: 360 x 10 s = 1 h
+    # a 2-hour outage in the middle counts as one step, not as observed time
+    blocks2 = [brow(i + 1, ts=T0 + 10 * i) for i in range(180)] + [brow(200 + i, ts=T0 + 9000 + 10 * i) for i in range(180)]
+    assert sampled_hours(blocks2, 10) == pytest.approx(3600 / 3600, rel=0.01)
+
+
+def test_m03_a_coverage_gap_ends_episodes():
+    blocks = [brow(1, ["a"], ts=T0), brow(2, ["a"], ts=T0 + 10), brow(3, ["a"], ts=T0 + 20),
+              brow(4, ["a"], ts=T0 + 7200)]  # restart two hours later: a new attempt
+    assert [e["block"] for e in find_episodes(blocks)] == [1, 4]
+
+
+def test_r02_store_survives_a_torn_line(tmp_path):
+    store = DefiStore(tmp_path, "arbitrum")
+    path = tmp_path / "arbitrum" / "blocks" / "2027-01-15.jsonl"
+    t = int(__import__("datetime").datetime(2027, 1, 15, 12, tzinfo=__import__("datetime").timezone.utc).timestamp())
+    store.append_blocks([brow(1, ["a"], ts=t)])
+    with open(path, "a", encoding="utf-8") as f:
+        f.write('{"chain": "arbitrum", "block": 2, "timest')  # killed mid-write
+    store.append_blocks([brow(3, ["a"], ts=t + 20)])  # the resumed run appends after it
+    df = store.load_blocks(date(2027, 1, 15))
+    assert list(df["block"]) == [1, 3] and df.attrs["skipped_lines"] == 1
+
+
+def test_m01_same_thin_pool_through_another_counter_pool_is_the_same_episode():
+    """Seen live on Base: thin pool X vs Y in one sample, X vs Z (better) in the next. Same mispriced pool X:
+    an attempt in the first sample would have closed it, so it is one episode."""
+    xy, xz = f"base USDC {A}>{C}", f"base USDC {A}>{D}"
+    b1, b2 = brow(1, [xy]), brow(2, [])
+    b2["surviving"] = [{"key": xy, "kind": "two_pool", "net_usd": 0.1, "capacity_usd": 1.0},
+                       {"key": xz, "kind": "two_pool", "net_usd": 0.3, "capacity_usd": 1.0}]
+    b3 = brow(3, [])
+    b3["surviving"] = [{"key": f"base USDC {A}>{B}", "kind": "two_pool", "net_usd": 0.2, "capacity_usd": 1.0}]
+    assert [e["key"] for e in find_episodes([b1, b2, b3])] == [xy]
+    assert measure.is_new_attempt(xz, {xy}, measure.key_pools(xy)) is False
+    assert measure.is_new_attempt(f"base USDC {B}>{D}", set(), measure.key_pools(xy)) is True

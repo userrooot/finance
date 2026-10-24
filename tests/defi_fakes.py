@@ -254,7 +254,8 @@ def pool_node(node: FakeNode, state: V2State | V3State) -> None:
 
 
 def chain_node(node: FakeNode, eth_usd: float = 2000.0) -> None:
-    node.set(FEED, S_LATEST_ROUND, w(1) + w(int(eth_usd * 1e8)) + w(0) + w(0) + w(1))
+    # updatedAt = the fake chain's genesis timestamp: fresh enough for every block the tests read
+    node.set(FEED, S_LATEST_ROUND, w(1) + w(int(eth_usd * 1e8)) + w(node.ts0) + w(node.ts0) + w(1))
 
 
 async def run(coro):

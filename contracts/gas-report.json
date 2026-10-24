@@ -1,14 +1,14 @@
 {
  "arbitrum": {
-  "two_hop_v3_v2": 449993,
-  "two_hop_v3_v3": 554106,
-  "three_hop": 680283,
-  "revert_insufficient_profit_two_hop": 426230
+  "two_hop_v3_v2": 450862,
+  "two_hop_v3_v3": 521729,
+  "three_hop": 656260,
+  "revert_insufficient_profit_two_hop": 426306
  },
  "base": {
-  "two_hop_v3_v2": 438620,
-  "two_hop_v3_v3": 511050,
-  "three_hop": 644704,
-  "revert_insufficient_profit_two_hop": 411047
+  "two_hop_v3_v2": 438813,
+  "two_hop_v3_v3": 542838,
+  "three_hop": 677187,
+  "revert_insufficient_profit_two_hop": 411268
  }
 }

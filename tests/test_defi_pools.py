@@ -228,3 +228,61 @@ async def test_build_registry_filters_factory_checks_and_caches(tmp_path):
     n = len(node.requests)
     again = await load_or_build_registry(make_client(node), "arbitrum", addresses_fixture(), cfg, path)
     assert len(node.requests) == n and len(again.pools) == 3
+
+
+# ---- review T4 regressions -------------------------------------------------------------------------------------------
+async def test_p06_dust_pools_of_unpriced_tokens_are_dropped_and_p07_duplicates_listed_once(tmp_path):
+    """WBTC/ARB pools have no USD-stable or WETH side, so the first TVL pass kept them all, including dust.
+    The second pass prices ARB and WBTC from deep pools and drops the ones under min_pool_tvl_usd."""
+    from arb.defi.pools import Token
+    wbtc = Token("WBTC", "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f", 8)
+    t = lambda a, d: {"address": a, "decimals_onchain": d}  # noqa: E731
+    pool = lambda dex, n, pair, **kw: {"dex": dex, "pair": pair, "pool": addr(n), **kw}  # noqa: E731
+    addresses = {"chains": {"arbitrum": {
+        "chain_id": 42161,
+        "aave_v3": {"pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD", "flashloan_premium_total_bps": 5},
+        "eth_usd_feed_chainlink": {"address": FEED, "decimals": 8, "price_usd": 2000.0},
+        "tokens": {"WETH": t(WETH.address, 18), "USDC": t(USDC.address, 6), "ARB": t(ARB.address, 18),
+                   "WBTC": t(wbtc.address, 8)},
+        "dexes": {"sushi_v2": {"factory": addr(0xF2)}},
+        "pools": [
+            pool("sushi_v2", 0x41, "WETH/USDC", reserve_token0_raw=1, reserve_token1_raw=1, balance_WETH=100.0, balance_USDC=200000.0),
+            pool("sushi_v2", 0x42, "ARB/USDC", reserve_token0_raw=1, reserve_token1_raw=1, balance_ARB=100000.0, balance_USDC=50000.0),
+            pool("sushi_v2", 0x43, "WBTC/USDC", reserve_token0_raw=1, reserve_token1_raw=1, balance_WBTC=1.0, balance_USDC=80000.0),
+            pool("sushi_v2", 0x44, "WBTC/ARB", reserve_token0_raw=51, reserve_token1_raw=1, balance_WBTC=5.1e-07, balance_ARB=0.2),  # dust
+            pool("sushi_v2", 0x45, "WBTC/ARB", reserve_token0_raw=1, reserve_token1_raw=1, balance_WBTC=0.5, balance_ARB=80000.0),  # real
+            pool("sushi_v2", 0x41, "WETH/USDC", reserve_token0_raw=1, reserve_token1_raw=1, balance_WETH=100.0, balance_USDC=200000.0),  # listed twice
+        ]}}}
+    node = FakeNode()
+    chain_node(node, 2000.0)
+    toks = {0x41: (WETH, USDC), 0x42: (ARB, USDC), 0x43: (wbtc, USDC), 0x44: (wbtc, ARB), 0x45: (wbtc, ARB)}
+    reserves = {0x41: (100 * 10 ** 18, 200_000 * 10 ** 6), 0x42: (100_000 * 10 ** 18, 50_000 * 10 ** 6),
+                0x43: (10 ** 8, 80_000 * 10 ** 6), 0x44: (51, 2 * 10 ** 17), 0x45: (5 * 10 ** 7, 80_000 * 10 ** 18)}
+    pair_of = {}
+    for n, (a, b) in toks.items():
+        t0, t1 = sorted((a, b), key=lambda x: x.address)
+        r0, r1 = reserves[n] if t0 is a else reserves[n][::-1]
+        node.set(addr(n), sel("token0()"), addr_pad(t0.address))
+        node.set(addr(n), sel("token1()"), addr_pad(t1.address))
+        node.set(addr(n), sel("getReserves()"), w(r0) + w(r1) + w(0))
+        pair_of.setdefault((t0.address, t1.address), []).append(n)
+
+    cfg = defi_cfg(min_pool_tvl_usd=10_000.0)
+    cfg.chains["arbitrum"].tokens.append("WBTC")
+    cfg.chains["arbitrum"].venues.append("sushi_v2")
+    # both WBTC/ARB pairs must pass the factory check (a real factory has one pair per token pair; here the fake
+    # answers the two lookups in order, so the test isolates the TVL pass)
+    answers = {tuple(sorted((wbtc.address, ARB.address))): iter([addr(0x44), addr(0x45)])}
+
+    def get_pair(args):
+        a0, a1 = eth_abi.decode(["address", "address"], args)
+        key = (a0.lower(), a1.lower())
+        return addr_pad(next(answers[key]) if key in answers else addr(pair_of[key][0]))
+    node.set(addr(0xF2), sel("getPair(address,address)"), get_pair)
+    reg = await build_registry(make_client(node), "arbitrum", addresses, cfg, tmp_path / "r.json")
+    kept = {p.address for p in reg.pools}
+    reasons = {r["pool"]: r["reason"] for r in reg.meta["rejected"]}
+    assert addr(0x44) not in kept and reasons[addr(0x44)].startswith("dust: TVL $")
+    assert addr(0x45) in kept and reg.tvl_usd[addr(0x45)] == pytest.approx(0.5 * 80_000 + 80_000 * 0.5, rel=0.01)
+    assert [p.address for p in reg.pools].count(addr(0x41)) == 1 and "duplicate" in reasons[addr(0x41)]
+    assert reg.meta["dust_pass"].startswith("done")

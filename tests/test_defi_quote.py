@@ -224,9 +224,16 @@ def test_exhausted_quotes_cap_the_size_and_never_look_profitable_beyond_the_wind
     hops = (Hop(v3.pool.address, WETH.address, USDC.address, v3.pool.venue, True),
             Hop(v2.pool.address, USDC.address, WETH.address, v2.pool.venue, False))
     res = optimal_amount([v3, v2], hops, 10 ** 22)
-    assert res.capped
+    # review T4 (P-09): the optimum here is interior (5.8e14 wei, the window edge is 2.3e16), so it is the true
+    # optimum and must not be flagged "window edge reached" (the old code flagged every route whose window < max_in)
+    assert not res.capped
     assert not any(q.exhausted for q in res.quotes)
     assert quote_route([v3, v2], hops, 10 ** 22)[0].exhausted
+    # a gap larger than the window allows: the optimum sits at the edge -> capped, and still never exhausted
+    deep_gap = v2_state(v2_spec(6), 500 * 10 ** 18, 500_000 * 10 ** 6)
+    res = optimal_amount([v3, deep_gap], hops, 10 ** 22)
+    assert res.capped and not any(q.exhausted for q in res.quotes)
+    assert quote_route([v3, deep_gap], hops, res.amount_in * 2)[0].exhausted
 
 
 def test_v3_tick_math_floor_for_negative_ticks():

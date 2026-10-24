@@ -262,4 +262,12 @@ def optimal_amount(states: Sequence[PoolState], hops: Sequence[Hop], max_in: int
     if hi <= 0:
         return _result(states, hops, 0, premium_bps, "golden_section", True)
     best = _golden_max(f, 1, hi, iters)
-    return _result(states, hops, best, premium_bps, "golden_section", capped or best >= hi)
+    # capped only when the optimum sits at the edge (max_in or the last fully quotable size). An interior optimum
+    # below a window edge is the true optimum (profit is concave), so it is not flagged (review T4, issue P-09).
+    return _result(states, hops, best, premium_bps, "golden_section", at_edge(best, hi))
+
+
+def at_edge(x: int, hi: int) -> bool:
+    """x is at the upper bound hi, up to the integer plateau of the profit curve (output rounding of a low-decimal
+    token makes profit flat over ~1e-7 of the size, so the search may stop slightly inside)."""
+    return x >= hi - max(3, hi // 10 ** 6)

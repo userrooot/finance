@@ -32,6 +32,7 @@ from arb.report import _f, _table
 log = logging.getLogger("arb.defi")
 
 REALISTIC_K = {"arbitrum": 8, "base": 1}
+BLOCK_TIME_S = {"arbitrum": 0.25, "base": 2.0}
 DAY_BLOCKS = {"arbitrum": 345_600, "base": 43_200}
 PROBE_DEPTHS = (1, 16, 128, 1024, 10_000, 100_000)
 MAX_REPLAYS_PER_SAMPLE = 10
@@ -51,6 +52,8 @@ def block_record(chain: str, scan: ScanResult, fallback_ts: int) -> dict:
             "surviving": [{"key": o.key, "kind": o.details.get("kind"), "net_usd": o.net_pnl_usd,
                            "capacity_usd": o.capacity_usd} for o in scan.opportunities],
             "best_net_usd": max((o.net_pnl_usd for o in scan.opportunities), default=None),
+            "attempt_keys": [s["key"] for s in select_attempts([{"key": o.key, "net_usd": o.net_pnl_usd}
+                                                                for o in scan.opportunities])],
             "errors": scan.errors, "complete": scan.complete, "by_kind": scan.by_kind,
             "duration_s": scan.duration_s}
 
@@ -108,26 +111,94 @@ def _mean(xs: list[float]) -> float | None:
     return sum(xs) / len(xs) if xs else None
 
 
-def find_episodes(blocks: list[dict]) -> list[dict]:
-    """An episode is the same key surviving in consecutive complete samples. Incomplete samples are unknown: they
-    neither start nor end an episode (the run simply continues across them)."""
+def key_pools(key: str) -> frozenset[str]:
+    """Pool ids of a candidate key ("<chain> <loan> dex:0xabcd..1234>dex:..."): the short pool addresses."""
+    parts = key.split(" ", 2)
+    return frozenset(x.split(":", 1)[-1] for x in parts[-1].split(">")) if len(parts) == 3 else frozenset((key,))
+
+
+def select_attempts(survivors: list[dict]) -> list[dict]:
+    """The attempts a bot could actually make in one block: greedily the best `net_usd` first, then every next
+    survivor that shares no pool with one already chosen (review T4, issue M-01).
+
+    Survivors that share a pool trade against the same mispricing (WETH-loan A>B and USDC-loan B>A, the same gap
+    through three fee tiers, triangles through the dislocated pool...). Executing one closes the others, so they are
+    one attempt, not several. Counting every key as its own episode multiplied episodes/day, and with it the
+    projected $/day, by the number of routes per gap."""
+    chosen: list[dict] = []
+    used: set[str] = set()
+    for s in sorted(survivors, key=lambda s: (-(s.get("net_usd") or 0.0), s["key"])):
+        pools = key_pools(s["key"])
+        if pools & used:
+            continue
+        chosen.append(s)
+        used |= pools
+    return chosen
+
+
+def _gap_cap_s(ts: list[int], default_interval_s: float) -> float:
+    """Spacing above which two consecutive samples are treated as a gap in coverage (restart, outage)."""
+    deltas = [b - a for a, b in zip(ts, ts[1:]) if b > a]
+    step = statistics.median(deltas) if deltas else default_interval_s
+    return max(5 * step, 120.0)
+
+
+def find_episodes(blocks: list[dict], default_interval_s: float = 10.0, *, by_route_key: bool = False) -> list[dict]:
+    """An episode is a gap that a bot would attempt once. It starts at a complete sample where an attempt
+    (`select_attempts`) is a key that did not survive in the previous complete sample, and lasts while the key keeps
+    surviving. Incomplete samples are unknown: they neither start nor end an episode. A coverage gap (restart,
+    outage, see `_gap_cap_s`) ends every episode, as it does in the live loop.
+
+    by_route_key=True counts every surviving key on its own (design 6.1 literally): reported for transparency only,
+    it double-counts correlated routes."""
     episodes: list[dict] = []
     prev: set[str] = set()
-    for b in sorted((b for b in blocks if b.get("complete")), key=lambda b: b["block"]):
-        cur = {s["key"]: s for s in b.get("surviving", [])}
-        for k in cur.keys() - prev:
-            episodes.append({"key": k, "block": b["block"], "kind": cur[k].get("kind"), "net_usd": cur[k]["net_usd"],
-                             "capacity_usd": cur[k]["capacity_usd"]})
-        prev = set(cur)
+    prev_pools: frozenset[str] = frozenset()
+    complete = sorted((b for b in blocks if b.get("complete")), key=lambda b: b["block"])
+    cap = _gap_cap_s([b["timestamp"] for b in complete], default_interval_s)
+    last_ts: int | None = None
+    for b in complete:
+        if last_ts is not None and b["timestamp"] - last_ts > cap:
+            prev, prev_pools = set(), frozenset()
+        last_ts = b["timestamp"]
+        surv = b.get("surviving", [])
+        if by_route_key:
+            new = [s for s in surv if s["key"] not in prev]
+            attempt_pools: frozenset[str] = frozenset()
+        else:
+            attempts = select_attempts(surv)
+            new = [s for s in attempts if is_new_attempt(s["key"], prev, prev_pools)]
+            attempt_pools = frozenset().union(*(key_pools(s["key"]) for s in attempts)) if attempts else frozenset()
+        for s in new:
+            episodes.append({"key": s["key"], "block": b["block"], "kind": s.get("kind"), "net_usd": s["net_usd"],
+                             "capacity_usd": s["capacity_usd"]})
+        prev, prev_pools = {s["key"] for s in surv}, attempt_pools
     return episodes
 
 
+def is_new_attempt(key: str, prev_surviving: set[str], prev_attempt_pools: frozenset[str]) -> bool:
+    """A new episode starts unless the route survived in the previous complete sample, or it shares a pool with one
+    of that sample's attempts (the same mispriced pool, now best closed through another counter-pool or loan token:
+    the earlier attempt would already have closed it). Seen live on Base: one thin pool paired with three venues."""
+    return key not in prev_surviving and not (key_pools(key) & prev_attempt_pools)
+
+
 def sampled_hours(blocks: list[dict], default_interval_s: float) -> float:
-    complete = [b for b in blocks if b.get("complete")]
+    """Observed hours: the real time between consecutive samples (a coverage gap counts as one normal step), times
+    the share of samples that are complete (review T4, issue M-03).
+
+    The old formula, complete samples x median spacing, under-counted time whenever sampling slowed down (rate-limit
+    back-off, slow scans, replays sharing the limiter), which mostly happens when there is activity, and so inflated
+    episodes/day."""
+    if not blocks:
+        return 0.0
     ts = sorted(b["timestamp"] for b in blocks)
     deltas = [b - a for a, b in zip(ts, ts[1:]) if b > a]
     step = statistics.median(deltas) if deltas else default_interval_s
-    return len(complete) * step / 3600.0
+    cap = _gap_cap_s(ts, default_interval_s)
+    total = sum(d if d <= cap else step for d in deltas) + step  # the last sample covers one step too
+    n_complete = sum(1 for b in blocks if b.get("complete"))
+    return total * n_complete / len(blocks) / 3600.0
 
 
 def replay_stats(rows: list[dict], eps_per_day: float, tax: CostModel) -> dict:
@@ -157,10 +228,14 @@ def compute_chain_metrics(chain: str, blocks: list[dict], sims: list[dict], ccfg
     n_all, n_ok = len(blocks), len(complete)
     df_rate = (n_all - n_ok) / n_all if n_all else None
     hours = sampled_hours(blocks, ccfg.sample_every_s)
-    episodes = find_episodes(blocks)
+    episodes = find_episodes(blocks, ccfg.sample_every_s)
     eps_day = len(episodes) / hours * 24 if hours else 0.0
+    key_eps = find_episodes(blocks, ccfg.sample_every_s, by_route_key=True)
+    durations = [b["duration_s"] for b in complete if b.get("duration_s") is not None]
     out: dict = {"chain": chain, "samples": n_all, "complete": n_ok, "data_failure_rate": df_rate,
                  "hours": hours, "episodes": len(episodes), "episodes_per_day": eps_day,
+                 "route_key_episodes_per_day": len(key_eps) / hours * 24 if hours else 0.0,
+                 "scan_latency_s": _median(durations),
                  "gross_rate": sum(1 for b in complete if b["gross_positive"] > 0) / n_ok if n_ok else None,
                  "surviving_rate": sum(1 for b in complete if b["surviving_keys"]) / n_ok if n_ok else None}
     kinds = {}
@@ -208,15 +283,29 @@ def compute_chain_metrics(chain: str, blocks: list[dict], sims: list[dict], ccfg
     out["quote_accuracy"] = {mix: {"n": len(v), "median": _median(v), "p90": _p90(v)} for mix, v in sorted(qa.items())}
     rs = out["replay"].get(realistic, {})
     n_replayed = rs.get("replays", 0)
+    n_rep_all = n_replayed + rs.get("data_failures", 0)
+    replay_df = rs.get("data_failures", 0) / n_rep_all if n_rep_all else None
     proj = rs.get("projected_per_day")
-    data_ok = df_rate is not None and df_rate < DATA_FAILURE_STOP and n_replayed >= VERDICT_MIN_EPISODES
-    if not data_ok:
+    # Data conditions (design 6.3 item 7 and 6.4/T5; review T4, issue M-02): enough complete samples, a low sample
+    # data-failure rate, >= 30 replayed episodes, and replays that themselves mostly ran (a replay data failure is
+    # dropped from the hit rate, so a high replay failure rate would leave a self-selected subset).
+    reasons = []
+    if df_rate is None or df_rate >= DATA_FAILURE_STOP:
+        reasons.append("sample data-failure rate")
+    if n_ok < MIN_COMPLETE_SAMPLES:
+        reasons.append(f"complete samples < {MIN_COMPLETE_SAMPLES}")
+    if n_replayed < VERDICT_MIN_EPISODES:
+        reasons.append(f"episodes replayed < {VERDICT_MIN_EPISODES}")
+    if replay_df is not None and replay_df >= DATA_FAILURE_STOP:
+        reasons.append("replay data-failure rate")
+    if reasons:
         verdict = "INCONCLUSIVE (DATA)"
     else:
         verdict = "GO-TO-NEXT-PHASE" if proj is not None and proj > VERDICT_USD_PER_DAY else "NO-GO"
     out["verdict"] = verdict
     out["verdict_inputs"] = {"realistic_k": realistic, "episodes_replayed": n_replayed, "data_failure_rate": df_rate,
-                             "projected_after_tax_per_day": proj}
+                             "complete_samples": n_ok, "replay_data_failure_rate": replay_df,
+                             "projected_after_tax_per_day": proj, "inconclusive_because": reasons}
     return out
 
 
@@ -241,12 +330,17 @@ def render_report(per_chain: list[dict], meta: dict[str, dict], from_day: date, 
     for m in per_chain:
         mt = meta.get(m["chain"], {})
         errs = ", ".join(f"{k}: {v}" for k, v in sorted(mt.get("rpc_errors", {}).items())) or "none"
+        lat = m.get("scan_latency_s")
+        bt = BLOCK_TIME_S.get(m["chain"])
+        lat_s = "-" if lat is None else f"{lat:.1f} s" + (f" (~{lat / bt:.0f} blocks)" if bt else "")
         rows.append([m["chain"], mt.get("mode", "live"), mt.get("start", "-"), mt.get("end", "-"),
-                     f"{m['complete']}/{m['samples']}", _pct(m["data_failure_rate"]), errs,
-                     str(mt.get("state_window_blocks", "-")), str(mt.get("sim_backend", "-"))])
+                     f"{m['complete']}/{m['samples']}", f"{m['hours']:.2f}", _pct(m["data_failure_rate"]), errs,
+                     str(mt.get("state_window_blocks", "-")), str(mt.get("sim_backend", "-")), lat_s])
     out += ["## 1. Coverage", "",
-            _table(["chain", "mode", "start", "end", "complete/all samples", "data-failure rate", "RPC errors by type",
-                    "state window (blocks)", "sim backend"], rows), ""]
+            _table(["chain", "mode", "start", "end", "complete/all samples", "observed hours", "data-failure rate",
+                    "RPC errors by type", "state window (blocks)", "sim backend", "median scan latency"], rows), "",
+            "Scan latency is how long this pipeline needs to read and evaluate one block. A bot built on it would "
+            "land at least that many blocks after N, usually far beyond the realistic offset k.", ""]
     for m in per_chain:
         if m["complete"] < MIN_COMPLETE_SAMPLES:
             out += [f"**{m['chain']}: only {m['complete']} complete samples (minimum {MIN_COMPLETE_SAMPLES}).**", ""]
@@ -256,9 +350,16 @@ def render_report(per_chain: list[dict], meta: dict[str, dict], from_day: date, 
             rows.append([m["chain"], kind, _f(k["candidates_med"], "{:.0f}"), _f(k["screened_med"], "{:.0f}"),
                          _pct(k["gross_rate"]), _pct(k["surviving_rate"]), _f(k["episodes_per_day"], "{:.1f}"),
                          _f(k["net_med"]), _f(k["net_p90"]), _f(k["capacity_med"], "{:.0f}")])
+        rows.append([m["chain"], "all (independent attempts)", "-", "-", _pct(m["gross_rate"]),
+                     _pct(m["surviving_rate"]),
+                     f"{m['episodes_per_day']:.1f} (route keys: {m.get('route_key_episodes_per_day', 0.0):.1f})",
+                     "-", "-", "-"])
     out += ["## 2. Gap test", "",
             _table(["chain", "kind", "candidates/block (median)", "screened-in/block (median)", "gross-gap rate",
-                    "surviving-gap rate", "episodes/day", "median net $", "p90 net $", "median capacity $"], rows), ""]
+                    "surviving-gap rate", "episodes/day", "median net $", "p90 net $", "median capacity $"], rows), "",
+            "Episodes count independent attempts: survivors that share a pool are one attempt (the best one). The "
+            "route-key count treats every surviving route as its own episode and over-counts correlated routes; "
+            "the projection uses the independent count. Net $ and capacity columns are over all surviving routes.", ""]
     rows = [[m["chain"], str(k), _pct(v)] for m in per_chain for k, v in m["persistence"].items()]
     out += ["## 3. Persistence", "", _table(["chain", "k", "persistence(k)"], rows), ""]
     rows = []
@@ -285,8 +386,13 @@ def render_report(per_chain: list[dict], meta: dict[str, dict], from_day: date, 
     out += ["## 7. Verdict", ""]
     for m in per_chain:
         vi = m["verdict_inputs"]
+        why = vi.get("inconclusive_because") or []
         out.append(f"- {m['chain']}: **{m['verdict']}** (k={vi['realistic_k']}, episodes replayed={vi['episodes_replayed']}, "
-                   f"data-failure rate={_pct(vi['data_failure_rate'])}, projected after-tax $/day={_f(vi['projected_after_tax_per_day'])})")
+                   f"complete samples={vi.get('complete_samples', m['complete'])}, "
+                   f"data-failure rate={_pct(vi['data_failure_rate'])}, "
+                   f"replay data-failure rate={_pct(vi.get('replay_data_failure_rate'))}, "
+                   f"projected after-tax $/day={_f(vi['projected_after_tax_per_day'])})"
+                   + (f"; inconclusive because: {', '.join(why)}" if why else ""))
     out += ["", f"VERDICT: {overall_verdict(per_chain)}", ""]
     return "\n".join(out)
 
@@ -475,6 +581,8 @@ async def run_measurement(chain: str, client: ChainClient, sim_client: ChainClie
     interval = ccfg.sample_every_s
     end = clock() + hours * 3600
     prev_keys: set[str] = set()
+    prev_pools: frozenset[str] = frozenset()
+    last_ok_ts: int | None = None
     recent: list[bool] = []
     pending: set[asyncio.Task] = set()
 
@@ -508,9 +616,16 @@ async def run_measurement(chain: str, client: ChainClient, sim_client: ChainClie
         if on_sample:
             on_sample(rec)
         if scan.complete and scan.costs is not None:
+            if last_ok_ts is not None and rec["timestamp"] - last_ok_ts > max(5 * interval, 120.0):
+                prev_keys, prev_pools = set(), frozenset()  # coverage gap: find_episodes starts new episodes too
+            last_ok_ts = rec["timestamp"]
             cur = {o.key for o in scan.opportunities}
-            new = [o for o in scan.opportunities if o.key not in prev_keys][:MAX_REPLAYS_PER_SAMPLE]
+            by_key = {o.key: o for o in scan.opportunities}
+            # same rule as find_episodes: one attempt per independent gap, replayed when it starts a new episode
+            attempts = [by_key[s["key"]] for s in select_attempts(rec["surviving"])]
+            new = [o for o in attempts if is_new_attempt(o.key, prev_keys, prev_pools)][:MAX_REPLAYS_PER_SAMPLE]
             prev_keys = cur
+            prev_pools = frozenset().union(*(key_pools(o.key) for o in attempts)) if attempts else frozenset()
             for opp in new:
                 summary.episodes_started += 1
                 t = asyncio.create_task(replays_for(opp, scan.costs, scan.block, rec["timestamp"]))

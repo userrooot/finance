@@ -171,13 +171,21 @@ describe("FlashArb security review", function () {
       const metaLen = parseInt(code.slice(-4), 16); // CBOR metadata length (last 2 bytes)
       code = code.slice(0, code.length - (metaLen + 2) * 2);
       const banned = { 0xf4: "DELEGATECALL", 0xf2: "CALLCODE", 0xff: "SELFDESTRUCT", 0xf0: "CREATE", 0xf5: "CREATE2", 0x32: "ORIGIN", 0x43: "NUMBER", 0x5f: "PUSH0", 0x5c: "TLOAD", 0x5d: "TSTORE" };
-      const found = [];
-      let calls = 0;
+      // Legacy codegen appends a data segment after the final INVALID (0xfe): here the 32-byte OZ ReentrancyGuard
+      // ERC-7201 slot constant 0x9b77..5f00. Decode linearly, then ignore opcodes after the last INVALID.
+      const ops = [];
       for (let i = 0; i < code.length / 2; i++) {
         const op = parseInt(code.substr(i * 2, 2), 16);
+        ops.push([i, op]);
+        if (op >= 0x60 && op <= 0x7f) i += op - 0x5f; // skip PUSH data
+      }
+      const lastInvalid = ops.map(([, o]) => o).lastIndexOf(0xfe);
+      expect(code.length / 2 - ops[lastInvalid][0], "data tail after the last INVALID").to.be.lte(65);
+      const found = [];
+      let calls = 0;
+      for (const [i, op] of ops.slice(0, lastInvalid)) {
         if (banned[op]) found.push(`${banned[op]}@${i}`);
         if (op === 0xf1) calls++;
-        if (op >= 0x60 && op <= 0x7f) i += op - 0x5f; // skip PUSH data
       }
       expect(found).to.deep.equal([]);
       expect(calls).to.be.gt(0); // sanity: the scan does see opcodes

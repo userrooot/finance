@@ -248,3 +248,70 @@ def test_evaluate_wrapper_returns_none_without_a_screen_pass():
     costs = BlockCosts("arbitrum", 1, 20_000_000, 0, {2: 0, 3: 0}, ETH_USD, {"WETH": ETH_USD, "USDC": 1.0})
     c = enumerate_candidates(reg, ["WETH"], max_hops=2)[0]
     assert evaluate(c, snap, costs, settings()) is None
+
+
+# ---- review T4 regressions (each fails on the pre-review code) ------------------------------------------------------
+async def test_p05_arbitrum_l1_estimate_uses_realistic_calldata_and_the_returned_base_fee():
+    from arb.defi.scanner import l1_probe_route
+    from arb.defi.route import encode_execute_arb
+    reg, _, node = world()
+    seen = []
+
+    def gas_l1(args):
+        import eth_abi
+        _, _, cd = eth_abi.decode(["address", "bool", "bytes"], args)
+        seen.append(cd)
+        return w(1_000) + w(30_000_000) + w(0)  # (gasEstimateForL1, baseFee, l1BaseFeeEstimate)
+    node.set(ARBITRUM_NODE_INTERFACE, S_GAS_ESTIMATE_L1, gas_l1)
+    client = make_client(node)
+    snap = await read_snapshot(client, reg, 900)
+    costs = await read_block_costs(client, reg, snap, defi_cfg())
+    # priced at the baseFee NodeInterface divided by, not the header's (20_000_000 here)
+    assert costs.l1_fee_wei_by_hops == {2: 1_000 * 30_000_000, 3: 1_000 * 30_000_000}
+    # the probed calldata has a real route's length and is mostly non-zero (an all-zero route compresses ~35% better)
+    assert [len(cd) for cd in seen] == [calldata_len(2), calldata_len(3)]
+    # (ABI padding keeps ~70% zeros even in a real route: 2 hops have 167 non-zero bytes; the old dummy had 11)
+    assert all(sum(1 for b in cd if b) > 0.25 * len(cd) for cd in seen)
+    assert len(encode_execute_arb(l1_probe_route(4))) == calldata_len(4)
+
+
+async def test_p08_stale_chainlink_price_is_a_data_failure():
+    from tests.defi_fakes import FEED
+    from arb.defi.pools import S_LATEST_ROUND
+    reg, _, node = world()
+    node.set(FEED, S_LATEST_ROUND, w(1) + w(2000 * 10 ** 8) + w(0) + w(node.ts0 - 30 * 3600) + w(1))  # 30 h old
+    res = await scan_block(make_client(node), reg, 900, settings())
+    assert not res.complete and any("stale" in e for e in res.errors)
+
+
+def _window_world():
+    """v3 WETH/USDC (spacing 1, 1 bp) at 1800, a deep sushi pair at 2000: an 11% gap. One bitmap word is 256 ticks
+    (~2.6%), so the first +-1-word window cannot hold the optimum."""
+    from tests.defi_fakes import tick_for_price as tfp
+    v3 = v3_spec(0xC2, fee_ppm=100, spacing=1)
+    a = v2_spec(0xA1)
+    tick = tfp(1800e6 / 1e18)
+    states = [v3_state(v3, tick, 3 * 10 ** 16, {}), v2_state(a, 1000 * 10 ** 18, 2_000_000 * 10 ** 6)]
+    reg = registry([v3, a], tvl={v3.address: 4e6, a.address: 4e6})
+    node = FakeNode(base_fee=20_000_000)
+    chain_node(node, ETH_USD)
+    for s in states:
+        pool_node(node, s)
+    node.set(ARBITRUM_NODE_INTERFACE, S_GAS_ESTIMATE_L1, lambda a: w(10_000) + w(0) + w(0))
+    return reg, states, node
+
+
+async def test_p09_optimum_at_the_tick_window_edge_is_resized_with_a_wider_window():
+    from arb.defi.pools import read_ticks
+    from arb.defi.quote import _window_edge
+    reg, states, node = _window_world()
+    client = make_client(node)
+    res = await scan_block(client, reg, 900, settings(max_loan_usd=5_000_000.0))
+    assert res.complete, res.errors
+    o = max(res.opportunities, key=lambda o: o.net_pnl_usd)
+    hops = [Hop(h["pool"], h["token_in"], h["token_out"], Venue(h["venue"]), h["zero_for_one"]) for h in o.details["hops"]]
+    narrow = await read_ticks(client, await read_snapshot(client, reg, 900), {states[0].pool.address})
+    st = [narrow.states[h.pool] for h in hops]
+    edge, capped = _window_edge(st, hops, 10 ** 30)
+    assert capped
+    assert o.details["amount_in_raw"] > edge  # the old code stopped at the first window's edge
