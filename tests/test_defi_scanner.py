@@ -315,3 +315,78 @@ async def test_p09_optimum_at_the_tick_window_edge_is_resized_with_a_wider_windo
     edge, capped = _window_edge(st, hops, 10 ** 30)
     assert capped
     assert o.details["amount_in_raw"] > edge  # the old code stopped at the first window's edge
+
+
+# ---- tick-crossing gas (security review section 7, coordinator request) -------------------------------------------
+def test_gas_model_charges_crossed_ticks_and_the_pancake_lm_hook():
+    from arb.defi.quote import HopQuote
+    gm = GasModel(100_000, 150_000, 80_000, tick_units=25_000, pancake_lm_units=26_000, pancake_lm_tick_units=10_000)
+    h = lambda v: Hop(addr(1), addr(2), addr(3), v, True)  # noqa: E731
+    q = lambda t: HopQuote(1, 1, 0, t, False)  # noqa: E731
+    hops = [h(Venue.UNI_V3), h(Venue.PANCAKE_V3), h(Venue.UNI_V2)]
+    assert gm.units(hops) == 100_000 + 150_000 + (150_000 + 26_000) + 80_000  # no quotes: zero ticks
+    # 93 ticks on the Pancake hop (the Arbitrum 1 bps pool for 1 WETH) and 8 on the Uniswap hop
+    assert gm.units(hops, [q(8), q(93), q(0)]) == (100_000 + 150_000 + 8 * 25_000 + 150_000 + 26_000 + 93 * 35_000
+                                                   + 80_000)
+    assert gm.units(hops, [q(8), q(93), q(0)]) > 3_500_000
+
+
+def _dense_tick_world(base_fee: int):
+    """v3 WETH/USDC, spacing 1, an initialized tick at every tick (a thin 1 bp pool), cheap vs a deep v2 pair."""
+    from tests.defi_fakes import tick_for_price as tfp
+    v3 = v3_spec(0xC3, fee_ppm=100, spacing=1)
+    a = v2_spec(0xA1)
+    tick = tfp(1990e6 / 1e18)
+    nets = {t: (10 ** 13 if t > tick else -10 ** 13) for t in range(tick - 200, tick + 200) if t != tick}
+    states = [v3_state(v3, tick, 10 ** 16, nets), v2_state(a, 1000 * 10 ** 18, 2_000_000 * 10 ** 6)]
+    reg = registry([v3, a], tvl={v3.address: 4e6, a.address: 4e6})
+    node = FakeNode(base_fee=base_fee)
+    chain_node(node, ETH_USD)
+    for s in states:
+        pool_node(node, s)
+    node.set(ARBITRUM_NODE_INTERFACE, S_GAS_ESTIMATE_L1, lambda a: w(1_000) + w(0) + w(0))
+    return reg, states, node
+
+
+async def test_reported_gas_counts_the_ticks_the_chosen_size_crosses_and_size_maximises_net():
+    from arb.defi.quote import optimal_amount
+    reg, states, node = _dense_tick_world(base_fee=200_000_000)  # 0.2 gwei: one crossed tick ~ $0.01
+    st = settings(min_profit_usd=-1e9)
+    res = await scan_block(make_client(node), reg, 900, st)
+    assert res.complete, res.errors
+    o = max(res.opportunities, key=lambda o: o.net_pnl_usd)
+    d = o.details
+    ticks = [h["ticks_crossed"] for h in d["hops"]]
+    gm = GasModel.from_cfg(st.defi.gas)
+    hops = [Hop(h["pool"], h["token_in"], h["token_out"], Venue(h["venue"]), h["zero_for_one"]) for h in d["hops"]]
+    assert sum(ticks) > 0
+    assert d["gas_units"] == gm.units(hops) + sum(ticks) * st.defi.gas.tick_units  # old code: gm.units(hops) only
+    assert d["gas_limit"] == -(-d["gas_units"] * 13 // 10)
+    # the raw-profit optimum crosses more ticks; with tick gas the chosen size is smaller and nets more
+    full = [states_by(states, reg.by_address(h.pool)) for h in hops]
+    raw_opt = optimal_amount(full, hops, 10 ** 30)
+    assert d["amount_in_raw"] < raw_opt.amount_in
+
+    def net(x):
+        qs = quote_route(full, hops, x)
+        u = gm.units(hops, qs)
+        return ((qs[-1].amount_out - x - aave_premium(x)) / 10 ** 6 if hops[0].token_in == USDC.address else
+                (qs[-1].amount_out - x - aave_premium(x)) / 1e18 * ETH_USD) - u * node.base_fee / 1e18 * ETH_USD
+    assert net(d["amount_in_raw"]) > net(raw_opt.amount_in)
+
+
+def test_sizing_never_goes_past_the_pool_liquidity():
+    """Liquidity only within +-50 ticks: a size that would drain it is exhausted and never chosen (in the real pool
+    it would walk to the price limit and burn 13M+ gas before PartialFill)."""
+    from arb.defi.quote import optimal_amount
+    from tests.defi_fakes import tick_for_price as tfp
+    v3 = v3_spec(0xC4, fee_ppm=100, spacing=1)
+    tick = tfp(1800e6 / 1e18)
+    L = 10 ** 16
+    st3 = v3_state(v3, tick, L, {tick - 50: L, tick + 50: -L})
+    v2 = v2_state(v2_spec(0xA1), 1000 * 10 ** 18, 2_000_000 * 10 ** 6)  # 11% gap: wants far more than the range holds
+    hops = (Hop(v3.address, USDC.address, WETH.address, v3.venue, False),
+            Hop(v2.pool.address, WETH.address, USDC.address, v2.pool.venue, True))
+    res = optimal_amount([st3, v2], hops, 10 ** 15)
+    assert res.amount_in > 0 and not any(q.exhausted for q in res.quotes) and res.capped
+    assert quote_route([st3, v2], hops, res.amount_in * 2)[0].exhausted

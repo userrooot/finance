@@ -514,6 +514,20 @@ async def wait_for_block(client: ChainClient, target: int, *, timeout_s: float =
         await sleep(poll_s)
 
 
+def apply_gas_limit(res: SimResult, gas_limit: int | None, costs: BlockCosts, n_hops: int) -> SimResult:
+    """A real attempt carries a gas limit taken from the scanner's estimate (`details.gas_limit` = estimate x
+    `defi.gas.limit_margin`). The harness runs with 25M gas, so a route that crosses far more ticks than predicted,
+    or a hop that exhausts a pool and walks to the price limit (13M+ gas, security review section 7), would look
+    like a success or an ordinary revert there. In reality it runs out of gas and pays the whole limit. So a replay
+    needing more than the limit is a miss whose cost is the limit, priced exactly like every other attempt."""
+    if not gas_limit or res.gas_estimate_tx <= gas_limit:
+        return res
+    wei = gas_limit * (costs.base_fee_wei + costs.tip_wei) + costs.l1_fee_wei_by_hops.get(n_hops, 0)
+    cost = wei / 1e18 * costs.eth_usd
+    return replace(res, success=False, revert_reason=f"OutOfGas(limit={gas_limit}, needed={res.gas_estimate_tx})",
+                   profit_raw=0, gas_estimate_tx=gas_limit, gas_cost_usd=cost, profit_usd=0.0, net_usd=-cost)
+
+
 async def replay_opportunity(scan_client: ChainClient, sim_client: ChainClient, registry: PoolRegistry,
                              settings: Settings, opp, costs_n: BlockCosts, offset: int, block_found: int,
                              ts_found: int, wait=wait_for_block) -> dict:
@@ -537,6 +551,7 @@ async def replay_opportunity(scan_client: ChainClient, sim_client: ChainClient, 
         caps[route.loan_token] = route.loan_amount
         res = await simulate(sim_client, SimRequest(registry.chain, block_sim, route,
                                                     registry.meta["aave_pool"], pools, caps, cfg.sim_gas), costs_k)
+        res = apply_gas_limit(res, d.get("gas_limit"), costs_k, len(hops))
     except DATA_ERRORS as e:
         return sim_record(registry.chain, opp, None, offset, block_found, ts_found, cfg.min_profit_usd, persisted,
                           f"{type(e).__name__}: {str(e)[:200]}")

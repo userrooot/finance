@@ -19,7 +19,8 @@ from arb.costs import CostModel
 from arb.defi.chain import SIM_CALLER, ChainClient
 from arb.defi.pools import (STABLES, Call, Multicall, PoolRegistry, PoolSpec, PoolState, Snapshot, V2State, V3State,
                             read_snapshot, read_ticks, sel, word)
-from arb.defi.quote import SizeResult, aave_premium, at_edge, marginal_rate, optimal_amount, quote_route
+from arb.defi.quote import (HopQuote, SizeResult, aave_premium, at_edge, marginal_rate, optimal_amount,
+                            quote_route)
 from arb.defi.route import Hop, Route, Venue, encode_execute_arb
 from arb.defi.v3math import Q96
 from arb.models import Leg, Opportunity
@@ -30,6 +31,7 @@ S_L1_FEE_UPPER_BOUND = sel("getL1FeeUpperBound(uint256)")  # 0xf1c7a58b
 S_GAS_ESTIMATE_L1 = sel("gasEstimateL1Component(address,bool,bytes)")  # 0x77d488a2
 assert S_L1_FEE_UPPER_BOUND.hex() == "f1c7a58b" and S_GAS_ESTIMATE_L1.hex() == "77d488a2"
 L1_SIZE_PAD = 100  # Base: size passed to getL1FeeUpperBound = calldata length + 100
+NET_SIZE_FRACTIONS = (1.0, 0.9, 0.75, 0.6, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05, 0.02)  # of the raw-profit optimum
 WIDE_TICK_WORDS = 4  # bitmap words each side for the second tick read when the optimum hit the first window's edge
 
 def short(addr: str) -> str:
@@ -51,12 +53,29 @@ class GasModel:
     base_units: int
     v3_hop_units: int
     v2_hop_units: int
+    tick_units: int = 0  # per initialized tick crossed in a v3 hop (~25k: cold tick accumulators)
+    pancake_lm_units: int = 0  # Pancake v3 farm hook (lmPool.accumulateReward), once per swap
+    pancake_lm_tick_units: int = 0  # Pancake lmPool.crossLmTick, per crossed tick
 
-    def units(self, hops: Sequence[Hop]) -> int:
+    def units(self, hops: Sequence[Hop], quotes: Sequence[HopQuote] | None = None) -> int:
+        """Tx gas for a route. With `quotes` (the local quote at the chosen size), every v3 hop also pays for the
+        initialized ticks it crosses, and Pancake hops for their lmPool hook (review T4 / security review
+        section 7: a thin Pancake 1 bps pool crossing 93 ticks costs 3.3M gas, not 230k)."""
         total = self.base_units
-        for h in hops:
-            total += self.v3_hop_units if h.venue in (Venue.UNI_V3, Venue.PANCAKE_V3) else self.v2_hop_units
+        for i, h in enumerate(hops):
+            if h.venue in (Venue.UNI_V3, Venue.PANCAKE_V3):
+                ticks = quotes[i].ticks_crossed if quotes is not None and i < len(quotes) else 0
+                total += self.v3_hop_units + ticks * self.tick_units
+                if h.venue == Venue.PANCAKE_V3:
+                    total += self.pancake_lm_units + ticks * self.pancake_lm_tick_units
+            else:
+                total += self.v2_hop_units
         return total
+
+    @classmethod
+    def from_cfg(cls, g) -> "GasModel":
+        return cls(g.base_units, g.v3_hop_units, g.v2_hop_units, g.tick_units, g.pancake_lm_units,
+                   g.pancake_lm_tick_units)
 
 
 @dataclass(frozen=True)
@@ -292,12 +311,35 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
         return out
     out.gross_positive = True
 
-    gm = GasModel(cfg.gas.base_units, cfg.gas.v3_hop_units, cfg.gas.v2_hop_units)
-    units = gm.units(candidate.hops)
+    gm = GasModel.from_cfg(cfg.gas)
     n = len(candidate.hops)
-    l2_wei, l1_wei, tip_wei = _gas_wei(units, costs, n)
+
+    def gas_parts(qs: Sequence[HopQuote]) -> tuple[int, int, int, int, float]:
+        u = gm.units(candidate.hops, qs)
+        l2w, l1w, tipw = _gas_wei(u, costs, n)
+        return u, l2w, l1w, tipw, _wei_to_usd(l2w + l1w + tipw, costs.eth_usd)
+
+    # Gas grows with the ticks crossed, so the size that maximises raw profit is not always the one that maximises
+    # net: try the profit optimum and smaller sizes, keep the best net (review T4, tick-crossing gas).
+    if any(isinstance(s, V3State) for s in states):
+        best_net, best_size = -math.inf, size
+        for f in NET_SIZE_FRACTIONS:
+            x = size.amount_in if f == 1.0 else int(size.amount_in * f)
+            if x <= 0:
+                continue
+            qs = size.quotes if f == 1.0 else quote_route(states, candidate.hops, x)
+            if any(q.exhausted for q in qs):
+                continue
+            prem = aave_premium(x, cfg.premium_bps)
+            pr = qs[-1].amount_out - x - prem
+            v = _raw_to_human(pr, dec) * price - gas_parts(qs)[4]
+            if v > best_net:
+                best_net = v
+                best_size = SizeResult(x, qs[-1].amount_out, prem, pr, list(qs), size.method,
+                                       size.capped and f == 1.0)
+        size = best_size
+    units, l2_wei, l1_wei, tip_wei, gas_usd = gas_parts(size.quotes)
     l2_usd, l1_usd, tip_usd = (_wei_to_usd(w, costs.eth_usd) for w in (l2_wei, l1_wei, tip_wei))
-    gas_usd = l2_usd + l1_usd + tip_usd
     profit_usd = _raw_to_human(size.profit_raw, dec) * price
     net = profit_usd - gas_usd
 
@@ -325,7 +367,8 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
         qs = quote_route(states, candidate.hops, x)
         if any(q.exhausted for q in qs):
             return -math.inf
-        return _raw_to_human(qs[-1].amount_out - x - aave_premium(x, cfg.premium_bps), dec) * price - gas_usd
+        # gas at this size (ticks crossed grow with x), the same estimate as the reported net
+        return _raw_to_human(qs[-1].amount_out - x - aave_premium(x, cfg.premium_bps), dec) * price - gas_parts(qs)[4]
 
     if net_at(max_in) >= 0:
         cap_x = max_in
@@ -349,7 +392,8 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
                         market="spot", side="sell", price=hout / hin if hin else 0.0, qty=hin))
         hop_details.append({"pool": pool.address, "dex": pool.dex, "venue": int(pool.venue), "token_in": h.token_in,
                             "token_out": h.token_out, "zero_for_one": h.zero_for_one, "amount_in": q.amount_in,
-                            "amount_out": q.amount_out, "fee_paid": q.fee_paid})
+                            "amount_out": q.amount_out, "fee_paid": q.fee_paid,
+                            "ticks_crossed": q.ticks_crossed})
     risk = sorted(x for x in notes if x)
     if size.capped:
         risk.append("capped at max_loan_usd" if at_max_in else "v3 window edge reached")
@@ -365,7 +409,8 @@ def assess(candidate: Candidate, snapshot: Snapshot, costs: BlockCosts, settings
         details={"chain": candidate.chain, "block": snapshot.block, "loan_token": loan_tok.address,
                  "loan_symbol": loan_tok.symbol, "kind": candidate.kind, "amount_in_raw": size.amount_in,
                  "amount_out_raw": size.amount_out, "premium_raw": size.premium, "profit_raw": size.profit_raw,
-                 "min_profit_raw": min_profit_raw, "gas_units": units, "base_fee_wei": costs.base_fee_wei,
+                 "min_profit_raw": min_profit_raw, "gas_units": units,
+                 "gas_limit": math.ceil(units * cfg.gas.limit_margin), "base_fee_wei": costs.base_fee_wei,
                  "tip_wei": costs.tip_wei, "l1_fee_wei": l1_wei, "eth_usd": costs.eth_usd, "hops": hop_details,
                  "sizing": size.method})
     return out

@@ -426,3 +426,39 @@ def test_m01_same_thin_pool_through_another_counter_pool_is_the_same_episode():
     assert [e["key"] for e in find_episodes([b1, b2, b3])] == [xy]
     assert measure.is_new_attempt(xz, {xy}, measure.key_pools(xy)) is False
     assert measure.is_new_attempt(f"base USDC {B}>{D}", set(), measure.key_pools(xy)) is True
+
+
+def test_replay_needing_more_gas_than_the_estimate_limit_is_an_out_of_gas_miss():
+    """Harness runs with 25M gas; a real tx carries estimate x 1.3. An exhausting hop (13M gas) or a route that
+    crosses far more ticks than predicted is a miss that costs the whole limit, not a hit or a cheap revert."""
+    from arb.defi.scanner import BlockCosts
+    costs = BlockCosts("arbitrum", 5, 20_000_000, 0, {2: 10 ** 12}, 2000.0, {"WETH": 2000.0})
+    big = SimResult("arbitrum", 5, True, None, 10 ** 15, 13_000_000, 13_030_000, 0.52, 2.0, 1.48, "0x" + "ab" * 32)
+    capped = measure.apply_gas_limit(big, 600_000, costs, 2)
+    expect = (600_000 * 20_000_000 + 10 ** 12) / 1e18 * 2000.0
+    assert not capped.success and capped.revert_reason.startswith("OutOfGas(limit=600000")
+    assert capped.gas_estimate_tx == 600_000 and capped.gas_cost_usd == pytest.approx(expect)
+    assert capped.net_usd == pytest.approx(-expect) and capped.gas_used_inner == 13_000_000
+    rec = sim_record("arbitrum", opp(), capped, 0, 5, T0, 0.05, True)
+    assert not rec["hit"] and not rec["below_threshold"] and rec["miss_cost_usd"] == pytest.approx(expect)
+    assert rec["quote_error_bps"] is None
+    # within the limit: unchanged
+    ok_ = SimResult("arbitrum", 5, True, None, 10 ** 15, 400_000, 430_000, 0.02, 2.0, 1.98, "0x" + "ab" * 32)
+    assert measure.apply_gas_limit(ok_, 600_000, costs, 2) is ok_ and measure.apply_gas_limit(ok_, None, costs, 2) is ok_
+
+
+async def test_replays_apply_the_scanner_gas_limit(tmp_path, monkeypatch):
+    reg, states, node = world(gap=True)
+
+    async def heavy(client, req, costs):  # every replay needs 13M gas (pool exhaustion)
+        return SimResult("arbitrum", req.block, True, None, 5 * 10 ** 15, 13_000_000, 13_030_000, 0.6, 9.98, 9.38,
+                         "0x" + "cd" * 32)
+    monkeypatch.setattr(measure, "simulate", heavy)
+    store = DefiStore(tmp_path, "arbitrum")
+    clock = FakeClock()
+    s = await run_measurement("arbitrum", make_client(node), make_client(node), reg, SETTINGS, store, hours=1,
+                              max_samples=1, clock=lambda: 1_800_000_000 + clock.t, sleep=clock.sleep, wait=no_wait)
+    assert s.replays == 3
+    d = __import__("datetime").datetime.fromtimestamp(1_800_000_000 + 1000, __import__("datetime").timezone.utc).date()
+    sims = store.load_sims(d)
+    assert len(sims) == 3 and not sims["hit"].any() and sims["revert_reason"].str.startswith("OutOfGas").all()

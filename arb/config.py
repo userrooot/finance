@@ -154,6 +154,14 @@ class DefiGasCfg(BaseModel):
     base_units: int = 120_000
     v3_hop_units: int = 120_000
     v2_hop_units: int = 75_000
+    # per-tick pool gas (security review section 7): ~25k per initialized tick crossed in any v3-style pool, plus
+    # Pancake's lmPool farm hook (~26k per swap, ~10k per crossed tick)
+    tick_units: int = 25_000
+    pancake_lm_units: int = 26_000
+    pancake_lm_tick_units: int = 10_000
+    # gas limit a real tx would carry = estimate x margin; a replay that needs more is an out-of-gas miss that
+    # costs the whole limit (and the limit bounds what an exhausting swap can burn)
+    limit_margin: float = 1.3
 
 
 class DefiChainCfg(BaseModel):

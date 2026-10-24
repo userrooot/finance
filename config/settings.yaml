@@ -142,7 +142,10 @@ defi:
   premium_bps: 5
   # Fitted to the measured fork gas (contracts/gas-report.json), max over both chains, so a 2-hop v3+v2 route = 462,826
   # (measured 449,993 / 438,620). A failed attempt costs nearly as much as a success (426,230 / 411,047).
-  gas: {base_units: 98882, v3_hop_units: 230290, v2_hop_units: 133654}
+  gas: {base_units: 98882, v3_hop_units: 230290, v2_hop_units: 133654,
+        # added by review T4 from docs/FLASH_ARB_SECURITY.md section 7 (pool gas per crossed initialized tick):
+        tick_units: 25000, pancake_lm_units: 26000, pancake_lm_tick_units: 10000,
+        limit_margin: 1.3}   # tx gas limit = estimate x 1.3; a replay needing more = out-of-gas miss at the limit
   sim_gas: 25000000                # lower to 16000000 when the sim backend is a Hardhat fork
   chains:
     arbitrum:
