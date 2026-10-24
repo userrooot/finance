@@ -461,7 +461,7 @@ NOW_S = 1000.0
 
 def live_settings(**kw):
     s = load_settings().model_copy(update={"live_trading": True})
-    s.live = s.live.model_copy(update={"max_order_usd": 300.0, **kw})
+    s.live = s.live.model_copy(update={"max_order_usd": 300.0, "capital_usd": 1100.0, **kw})
     return s
 
 
