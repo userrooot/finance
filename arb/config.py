@@ -181,6 +181,7 @@ class DefiCfg(BaseModel):
     max_hops: int = 3
     tri_top_k: int = 3
     premium_bps: int = 5                 # checked against addresses.json at startup
+    sim_gas: int = 25_000_000            # gas limit of the harness creation eth_call (Hardhat forks cap at 16_777_216)
     gas: DefiGasCfg = DefiGasCfg()
     chains: dict[str, DefiChainCfg]
 

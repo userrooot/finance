@@ -132,7 +132,7 @@ def test_pool_not_whitelisted(reg):
 def test_venue_mismatch_and_enum_panic(reg):
     h = good().hops
     expect("VenueMismatch", good(hops=(Hop(P_V3, WETH.address, USDC.address, Venue.PANCAKE_V3, True), h[1])), reg, hop=0)
-    expect("Panic0x21", good(hops=(Hop(P_V3, WETH.address, USDC.address, 7, True), h[1])), reg)
+    expect("EmptyRevert", good(hops=(Hop(P_V3, WETH.address, USDC.address, 7, True), h[1])), reg)
 
 
 def test_pool_token_mismatch(reg):

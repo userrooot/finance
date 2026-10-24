@@ -55,6 +55,7 @@ class SimRequest:
     aave_pool: str
     pools: tuple[PoolSpec, ...]  # whitelisted inside the harness
     token_caps: dict[str, int]  # token address -> maxLoan raw (loan token must be present)
+    sim_gas: int = SIM_GAS  # gas limit of the creation eth_call (config defi.sim_gas; Hardhat forks allow at most 16_777_216)
 
 
 @dataclass(frozen=True)
@@ -148,7 +149,7 @@ async def simulate(client: ChainClient, req: SimRequest, costs: BlockCosts) -> S
     cd = build_execute_arb_calldata(req.route)
     initcode = build_harness_initcode(req, cd)
     try:
-        raw = await client.eth_call(None, initcode, req.block, from_=SIM_CALLER, gas=SIM_GAS)
+        raw = await client.eth_call(None, initcode, req.block, from_=SIM_CALLER, gas=req.sim_gas)
     except ExecutionReverted as e:
         # the harness itself reverted (constructor): not a route result, a broken simulator
         raise SimulatorUnavailable(f"harness creation call reverted: {decode_revert(e.data or b'')}") from e

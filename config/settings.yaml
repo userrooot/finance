@@ -140,7 +140,10 @@ defi:
   max_hops: 3
   tri_top_k: 3
   premium_bps: 5
-  gas: {base_units: 120000, v3_hop_units: 120000, v2_hop_units: 75000}   # replaced from contracts/gas-report.json in task T4
+  # Fitted to the measured fork gas (contracts/gas-report.json), max over both chains, so a 2-hop v3+v2 route = 462,826
+  # (measured 449,993 / 438,620). A failed attempt costs nearly as much as a success (426,230 / 411,047).
+  gas: {base_units: 98882, v3_hop_units: 230290, v2_hop_units: 133654}
+  sim_gas: 25000000                # lower to 16000000 when the sim backend is a Hardhat fork
   chains:
     arbitrum:
       rpc_url_env: ARBITRUM_RPC

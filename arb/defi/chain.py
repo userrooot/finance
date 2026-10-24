@@ -287,8 +287,13 @@ def resolve_rpc_url(cfg: "DefiChainCfg") -> str:
     return os.environ.get(cfg.rpc_url_env) or cfg.rpc_url_default
 
 
+HARDHAT_CHAIN_ID = 31337  # a Hardhat fork reports this id instead of the forked chain's
+
+
 async def connect(name: str, cfg: "DefiChainCfg", expected_chain_id: int, *,
-                  transport: Transport | None = None, sleep=asyncio.sleep) -> ChainClient:
+                  transport: Transport | None = None, sleep=asyncio.sleep,
+                  allow_chain_ids: tuple[int, ...] = ()) -> ChainClient:
+    """`allow_chain_ids` lets a Hardhat fork through (pass (HARDHAT_CHAIN_ID,)); the default is strict."""
     client = ChainClient(name, expected_chain_id, resolve_rpc_url(cfg), RateLimiter(cfg.max_rps, cfg.burst),
                          transport=transport, sleep=sleep)
     try:
@@ -296,7 +301,7 @@ async def connect(name: str, cfg: "DefiChainCfg", expected_chain_id: int, *,
     except BaseException:
         await client.close()
         raise
-    if got != expected_chain_id:
+    if got != expected_chain_id and got not in allow_chain_ids:
         await client.close()
         raise RpcError("eth_chainId", None, f"{name}: RPC reports chain id {got}, expected {expected_chain_id}")
     return client

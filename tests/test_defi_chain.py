@@ -163,3 +163,13 @@ async def test_connect_checks_chain_id(monkeypatch):
     assert client.rpc_url == "http://keyed.example/abc"  # env var wins over the default
     with pytest.raises(RpcError):
         await connect("arbitrum", cfg, 1, transport=node)
+
+
+async def test_connect_allows_a_hardhat_fork_only_when_asked(monkeypatch):
+    cfg = defi_cfg().chains["arbitrum"]
+    monkeypatch.delenv(cfg.rpc_url_env, raising=False)
+    fork = FakeTransport(handler=lambda p: ok(hex(31337)))
+    with pytest.raises(RpcError):
+        await connect("arbitrum", cfg, 42161, transport=fork)
+    client = await connect("arbitrum", cfg, 42161, transport=fork, allow_chain_ids=(31337,))
+    assert await client.chain_id() == 31337

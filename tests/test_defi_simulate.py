@@ -236,3 +236,67 @@ async def test_live_harness_rejects_an_unprofitable_route(chain):
         assert out["harness"].startswith("ok: success=False reason=InsufficientProfit"), out["harness"]
     finally:
         await client.close()
+
+
+async def test_simulate_gas_limit_is_configurable(artifact):
+    node = FakeNode()
+    node.create = lambda data: harness_reply(True, 1, 100_000)
+    await simulate(make_client(node), replace(request(), sim_gas=16_000_000), costs())
+    assert node.creation_calls[-1]["gas"] == hex(16_000_000)
+
+
+def test_empty_revert_data_decodes_to_bare_0x():
+    # an out-of-range venue enum reverts with no data at all
+    assert decode_revert(b"") == "0x"
+
+
+@pytest.mark.skipif(os.environ.get("DEFI_LIVE") != "1" or not _HARNESS.exists(),
+                    reason="needs DEFI_LIVE=1 and the built FlashArbSimHarness artifact")
+@pytest.mark.parametrize("chain", ["arbitrum", "base"])
+async def test_live_local_route_quote_equals_harness_profit_to_the_wei(chain):
+    """Unprofitable routes (minProfit 0) revert with InsufficientProfit(balance, required): balance - required is the
+    exact profit the real pools would have given, and it must equal the local integer quote."""
+    import time
+
+    from arb.config import load_settings
+    from arb.defi import cli, measure
+    from arb.defi.pools import read_ticks
+    from arb.defi.quote import aave_premium, quote_route
+    from arb.defi.scanner import enumerate_candidates, read_block_costs
+
+    settings = load_settings()
+    client, reg = await cli._setup(settings, chain, False)
+    try:
+        n = (await client.block_number()) - 1
+        snap = await read_snapshot_for(client, reg, n)
+        costs = await read_block_costs(client, reg, snap, settings.defi)
+        cands = [c for c in enumerate_candidates(reg, ["WETH"], 2, 3) if c.kind == "two_pool"
+                 and all(p.address in snap.states for p in c.pools)]
+        cands.sort(key=lambda c: -min(reg.tvl_usd.get(p.address, 0) for p in c.pools))
+        picked, seen = [], set()
+        for c in cands:  # one route per distinct dex combination, deepest first, v2-style pools included
+            k = tuple(p.dex for p in c.pools)
+            if k not in seen and (len(picked) < 3 or any(p.v2_formula for p in c.pools)):
+                seen.add(k)
+                picked.append(c)
+            if len(picked) >= 6:
+                break
+        snap = await read_ticks(client, snap, {p.address for c in picked for p in c.pools if p.is_v3})
+        amount = int(3000 / costs.token_usd["WETH"] * 1e18)
+        for c in picked:
+            q = quote_route([snap.states[p.address] for p in c.pools], c.hops, amount)
+            assert not any(x.exhausted for x in q)
+            predicted = q[-1].amount_out - amount - aave_premium(amount)
+            route = Route(c.hops[0].token_in, amount, 0, int(time.time()) + 3600, c.hops)
+            caps = {t: 0 for h in c.hops for t in (h.token_in, h.token_out)}
+            caps[route.loan_token] = amount
+            res = await simulate(client, SimRequest(chain, n, route, reg.meta["aave_pool"], c.pools, caps,
+                                                    settings.defi.sim_gas), costs)
+            assert measure.implied_profit_raw(res) == predicted, (c.key, res.revert_reason, predicted)
+    finally:
+        await client.close()
+
+
+async def read_snapshot_for(client, reg, n):
+    from arb.defi.pools import read_snapshot
+    return await read_snapshot(client, reg, n)

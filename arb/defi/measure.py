@@ -315,8 +315,8 @@ def build_defi_report(settings: Settings, chains: list[str], from_day: date, to_
         mt: dict = {"mode": "live", "rpc_errors": {}}
         for r in metas:
             if r["kind"] == "probe":
-                mt["state_window_blocks"] = r.get("state_window_blocks")
-                mt["sim_backend"] = mt.get("sim_backend") or r.get("harness")
+                w = r.get("state_window_blocks")
+                mt["state_window_blocks"] = None if w is None else int(w)
             elif r["kind"] == "run":
                 for t, c in (r.get("rpc_errors") or {}).items():
                     mt["rpc_errors"][t] = mt["rpc_errors"].get(t, 0) + c
@@ -385,7 +385,7 @@ async def probe(client: ChainClient, registry: PoolRegistry, settings: Settings,
         n = head - 1
         snap = await read_snapshot(client, registry, n)
         costs = await read_block_costs(client, registry, snap, cfg)
-        req = SimRequest(registry.chain, n, route, aave, (p1, p2), {wa: amount, ua: 0})
+        req = SimRequest(registry.chain, n, route, aave, (p1, p2), {wa: amount, ua: 0}, cfg.sim_gas)
         res = await simulate(sc, req, costs)
         out["harness"] = ("ok: success=%s reason=%s gas_inner=%d" % (res.success, res.revert_reason, res.gas_used_inner))
         out["harness_result"] = res
@@ -430,7 +430,7 @@ async def replay_opportunity(scan_client: ChainClient, sim_client: ChainClient, 
         caps = {t: 0 for h in hops for t in (h.token_in, h.token_out)}
         caps[route.loan_token] = route.loan_amount
         res = await simulate(sim_client, SimRequest(registry.chain, block_sim, route,
-                                                    registry.meta["aave_pool"], pools, caps), costs_k)
+                                                    registry.meta["aave_pool"], pools, caps, cfg.sim_gas), costs_k)
     except DATA_ERRORS as e:
         return sim_record(registry.chain, opp, None, offset, block_found, ts_found, cfg.min_profit_usd, persisted,
                           f"{type(e).__name__}: {str(e)[:200]}")

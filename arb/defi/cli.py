@@ -10,7 +10,7 @@ from pathlib import Path
 
 from arb.config import Settings
 from arb.defi import measure
-from arb.defi.chain import ChainClient, RateLimiter, RpcError, connect
+from arb.defi.chain import HARDHAT_CHAIN_ID, ChainClient, RateLimiter, RpcError, connect
 from arb.defi.pools import PoolRegistry, load_or_build_registry
 from arb.defi.scanner import scan_block
 from arb.defi.store import DefiStore
@@ -116,6 +116,11 @@ async def cmd_measure(settings: Settings, args) -> int:
     if args.sim_rpc:
         sim_client = ChainClient(args.chain, int(reg.meta["chain_id"]), args.sim_rpc,
                                  RateLimiter(cfg.chains[args.chain].max_rps, cfg.chains[args.chain].burst))
+        got = await sim_client.chain_id()  # a Hardhat fork reports 31337; anything else must be the real chain
+        if got not in (int(reg.meta["chain_id"]), HARDHAT_CHAIN_ID):
+            await sim_client.close()
+            await client.close()
+            raise RpcError("eth_chainId", None, f"--sim-rpc reports chain id {got}")
     store = DefiStore(cfg.storage_dir, args.chain)
     try:
         summary = await measure.run_measurement(args.chain, client, sim_client, reg, settings, store, args.hours,

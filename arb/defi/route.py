@@ -90,10 +90,12 @@ def validate_route(route: Route, registry: "PoolRegistry", caps: dict[str, int],
     The registry stands in for the on-chain whitelist: a pool is "enabled" iff the registry knows it.
     """
     allowed = {t.lower(): cap for t, cap in caps.items()}
-    # ABI decoding of an out-of-range enum reverts with Panic(0x21) before any contract logic runs.
+    # ABI decoding of an out-of-range enum reverts before any contract logic runs. The compiled contract reverts
+    # with EMPTY data here (measured by the contract task), not Panic(0x21) as the design's U-05 row says.
+    # SPEC-DEVIATION: code "EmptyRevert" instead of Panic0x21.
     for h in route.hops:
         if int(h.venue) not in (0, 1, 2, 3):
-            raise RouteError("Panic0x21")
+            raise RouteError("EmptyRevert")
     n = len(route.hops)
     if n < 2 or n > MAX_HOPS:
         raise RouteError("BadHopCount")
