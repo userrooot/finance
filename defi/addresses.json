@@ -1,0 +1,4225 @@
+{
+  "generated_utc": "2026-10-24T15:04:09Z",
+  "chains": {
+    "arbitrum": {
+      "chain_id": 42161,
+      "rpc": "https://arb1.arbitrum.io/rpc",
+      "verified_at_block": 517872239,
+      "verified_at_utc": "2026-10-24T15:04:08Z",
+      "aave_v3": {
+        "pool_addresses_provider": "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
+        "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "pool_implementation_eip1967": "0xf05fd3cc911b4c5e36e53c00354f645e22922c9a",
+        "flashloan_premium_total_bps": 5,
+        "flashloan_premium_to_protocol_bps": 10000,
+        "flashLoanSimple_available": true,
+        "reserves": {
+          "WETH": {
+            "asset": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            "active": true,
+            "frozen": false,
+            "paused": false,
+            "flashloan_enabled": true,
+            "decimals": 18
+          },
+          "USDC": {
+            "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "active": true,
+            "frozen": false,
+            "paused": false,
+            "flashloan_enabled": true,
+            "decimals": 6
+          },
+          "USDC.e": {
+            "asset": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+            "active": true,
+            "frozen": true,
+            "paused": false,
+            "flashloan_enabled": true,
+            "decimals": 6
+          }
+        },
+        "verified": true,
+        "sources": "https://www.npmjs.com/package/@bgd-labs/aave-address-book (v4.44.22, src/AaveV3Arbitrum.sol, src/AaveV3Base.sol)"
+      },
+      "dexes": {
+        "uniswap_v3": {
+          "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+          "swap_router02": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+          "quoter_v2": "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
+          "nonfungible_position_manager": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+          "fee_tiers_bps_x100": [
+            100,
+            500,
+            3000,
+            10000
+          ],
+          "sources": "https://docs.uniswap.org/contracts/v3/reference/deployments/arbitrum-deployments and .../base-deployments; factory also in @uniswap/v3-sdk constants",
+          "onchain_factory_code_bytes": 24535,
+          "router_factory_matches": true,
+          "quoter_factory_matches": true,
+          "npm_factory_matches": true
+        },
+        "sushi_v2": {
+          "factory": "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
+          "router": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+          "sources": "npm @sushiswap/v2-sdk 0.0.11 dist/constants.js; npm @sushiswap/v3-sdk 1.0.12 dist/constants.js",
+          "onchain_factory_code_bytes": 11264,
+          "router_factory_matches": true
+        },
+        "sushi_v3": {
+          "factory": "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e",
+          "nonfungible_position_manager": "0xF0cBce1942A68BEB3d1b73F0dd86C8DCc363eF49",
+          "sources": "npm @sushiswap/v2-sdk 0.0.11 dist/constants.js; npm @sushiswap/v3-sdk 1.0.12 dist/constants.js",
+          "onchain_factory_code_bytes": 24535,
+          "npm_factory_matches": true
+        },
+        "camelot_v2": {
+          "factory": "0x6EcCab422D763aC031210895C81787E87B43A652",
+          "router": "0xc873fEcbd354f5A56E00E710B90EF4201db2448d",
+          "note": "router.factory() matches on-chain; official source not obtained (see unverified)",
+          "onchain_factory_code_bytes": 23646,
+          "router_factory_matches": true
+        },
+        "camelot_algebra_v3": {
+          "factory": "0x1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B",
+          "router": "0x1F721E2E82F6676FCE4eA07A5958cF098D339e18",
+          "note": "router.factory() matches on-chain; official source not obtained (see unverified)",
+          "onchain_factory_code_bytes": 14031,
+          "router_factory_matches": true
+        },
+        "pancake_v3": {
+          "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+          "deployer": "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9",
+          "fee_tiers_bps_x100": [
+            100,
+            500,
+            2500,
+            10000
+          ],
+          "sources": "npm @pancakeswap/v3-sdk 3.10.3 dist/constants.d.ts (FACTORY_ADDRESSES)",
+          "note": "factory address from SDK; pools found via factory.getPool",
+          "onchain_factory_code_bytes": 5151
+        }
+      },
+      "tokens": {
+        "WETH": {
+          "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+          "symbol_onchain": "WETH",
+          "decimals_onchain": 18,
+          "verified": true
+        },
+        "USDC": {
+          "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+          "symbol_onchain": "USDC",
+          "decimals_onchain": 6,
+          "verified": true
+        },
+        "USDC.e": {
+          "address": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+          "symbol_onchain": "USDC",
+          "decimals_onchain": 6,
+          "verified": true
+        },
+        "USDT": {
+          "address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+          "symbol_onchain": "USD\u20ae0",
+          "decimals_onchain": 6,
+          "verified": true
+        },
+        "DAI": {
+          "address": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+          "symbol_onchain": "DAI",
+          "decimals_onchain": 18,
+          "verified": true
+        },
+        "WBTC": {
+          "address": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+          "symbol_onchain": "WBTC",
+          "decimals_onchain": 8,
+          "verified": true
+        },
+        "ARB": {
+          "address": "0x912CE59144191C1204E64559FE8253a0e49E6548",
+          "symbol_onchain": "ARB",
+          "decimals_onchain": 18,
+          "verified": true
+        }
+      },
+      "eth_usd_feed_chainlink": {
+        "address": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+        "description": "ETH / USD",
+        "decimals": 8,
+        "answer_1e8": 233367000000,
+        "price_usd": 2333.67,
+        "updatedAt": 1792854211,
+        "verified": true
+      },
+      "balancer_v2_vault": {
+        "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+        "code_bytes": 24512,
+        "flash_loan_fee_1e18": 0,
+        "source": "npm @balancer-labs/v2-deployments 3.2.0 dist/addresses/arbitrum.json"
+      },
+      "pools": [
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x6f38e884725a116c9c7fbf208e79fe8828a2595f",
+          "fee": 100,
+          "liquidity_raw": 7030424331818249,
+          "balance_WETH": 50.17374134204747,
+          "balance_USDC": 27609.584889
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xc6962004f452be9203591991d15f6b388e09e8d0",
+          "fee": 500,
+          "liquidity_raw": 3434874917588943546,
+          "balance_WETH": 11251.297103743102,
+          "balance_USDC": 12243551.773972
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xc473e2aee3441bf9240be85eb122abb059a3b57c",
+          "fee": 3000,
+          "liquidity_raw": 626904471293595757,
+          "balance_WETH": 1234.1917122400873,
+          "balance_USDC": 2303582.257621
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x42fc852a750ba93d5bf772ecdc857e87a86403a9",
+          "fee": 10000,
+          "liquidity_raw": 15982202424563409,
+          "balance_WETH": 38.433365933873624,
+          "balance_USDC": 52713.611038
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xb658ee5c63922d2852f24458effa2bfa2cba3574",
+          "fee": 100,
+          "liquidity_raw": 24694703722,
+          "balance_WETH": 0.006738129848168466,
+          "balance_USDC": 10.44841
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xf3eb87c1f6020982173c908e7eb31aa66c1f0296",
+          "fee": 500,
+          "liquidity_raw": 36212889438507725,
+          "balance_WETH": 87.42978849128568,
+          "balance_USDC": 95576.800602
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xc96525298419f7e00da8826b733ee52e271662b5",
+          "fee": 3000,
+          "liquidity_raw": 1030124718212,
+          "balance_WETH": 0.018953038335452924,
+          "balance_USDC": 133.551425
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x0ed17087175a677c05328a37b9795728e9cd8821",
+          "fee": 10000,
+          "liquidity_raw": 20255031421,
+          "balance_WETH": 0.002625918342409091,
+          "balance_USDC": 0.969745
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/USDC",
+          "pool": "0x57b85fef094e10b5eecdf350af688299e9553378",
+          "reserve_token0_raw": 4133261466575654859,
+          "reserve_token1_raw": 9661738017,
+          "balance_WETH": 4.133261466575655,
+          "balance_USDC": 9661.738017
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/USDC",
+          "pool": "0x54b26faf3671677c19f70c4b879a6f7b898f732c",
+          "reserve_token0_raw": 138394799876792252,
+          "reserve_token1_raw": 325971873,
+          "balance_WETH": 0.13839479987679226,
+          "balance_USDC": 325.971873
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xb1026b8e7276e7ac75410f1fcbbe21796e8f7526",
+          "liquidity_raw": 5254139703411523,
+          "balance_WETH": 89.3429418820088,
+          "balance_USDC": 29157.145703
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x7fcdc35463e3770c2fb992716cd070b63540b947",
+          "fee": 100,
+          "liquidity_raw": 19291913405661025,
+          "balance_WETH": 131.13142707156504,
+          "balance_USDC": 80064.833647
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xd9e2a1a61b6e61b275cec326465d417e52c1b95c",
+          "fee": 500,
+          "liquidity_raw": 61474955463857002,
+          "balance_WETH": 247.14147334007524,
+          "balance_USDC": 224698.895919
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xb3d494d53aac707c469318f15cfd5d7857a61388",
+          "fee": 2500,
+          "liquidity_raw": 988132630642,
+          "balance_WETH": 0.011815987322126307,
+          "balance_USDC": 39.02488
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xbedb464ef776fe208e3f2b5c0bafbe7983ef49db",
+          "fee": 10000,
+          "liquidity_raw": 218296498430,
+          "balance_WETH": 0.06195319939173103,
+          "balance_USDC": 148.771744
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0xe754841b77c874135caca3386676e886459c2d61",
+          "fee": 100,
+          "liquidity_raw": 6675154702775,
+          "balance_WETH": 0.149681110410039,
+          "balance_USDC.e": 688.079929
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0xc31e54c7a869b9fcbecc14363cf510d1c41fa443",
+          "fee": 500,
+          "liquidity_raw": 23167505366292379,
+          "balance_WETH": 260.032497464901,
+          "balance_USDC.e": 368103.301639
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x17c14d2c404d167802b16c450d3c99f88f2c4f4d",
+          "fee": 3000,
+          "liquidity_raw": 11836345525289275,
+          "balance_WETH": 45.23099749065412,
+          "balance_USDC.e": 156272.740245
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x7e5e4a3f855f19cc1a45b9eff1c8b2419036ce85",
+          "fee": 10000,
+          "liquidity_raw": 53294301298439,
+          "balance_WETH": 0.6305134459973242,
+          "balance_USDC.e": 2010.752003
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x5db80967733bcdcb31f0b03ffce86bf30482c82d",
+          "fee": 100,
+          "liquidity_raw": 490174707905,
+          "balance_WETH": 0.012551789845506856,
+          "balance_USDC.e": 35.425563
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x15e444da5b343c5a0931f5d3e85d158d1efc3d40",
+          "fee": 500,
+          "liquidity_raw": 176162773896447,
+          "balance_WETH": 0.40870197682811366,
+          "balance_USDC.e": 1059.105695
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x4d1576158518dd61924218446c1057cf03138d57",
+          "fee": 3000,
+          "liquidity_raw": 16159096363406526,
+          "balance_WETH": 83.50727951151822,
+          "balance_USDC.e": 277295.552388
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0xae604e38f8f2b17347c7e2508e18ffa28554a279",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 1.5e-17,
+          "balance_USDC.e": 3.000017
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/USDC.e",
+          "pool": "0x905dfcd5649217c42684f23958568e533c711aa3",
+          "reserve_token0_raw": 35331398207940424075,
+          "reserve_token1_raw": 82463018744,
+          "balance_WETH": 35.331398207940424,
+          "balance_USDC.e": 82463.018744
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/USDC.e",
+          "pool": "0x84652bb2539513baf36e225c930fdd8eaa63ce27",
+          "reserve_token0_raw": 32432240310391000567,
+          "reserve_token1_raw": 75765110921,
+          "balance_WETH": 32.432240310391,
+          "balance_USDC.e": 75765.110921
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x521aa84ab3fcc4c05cabac24dc3682339887b126",
+          "liquidity_raw": 159096375302725,
+          "balance_WETH": 0.6929099345561086,
+          "balance_USDC.e": 1356.634356
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x4fc7ac44dae553464d92c049175133239a8705c1",
+          "fee": 100,
+          "liquidity_raw": 57654019254211,
+          "balance_WETH": 0.12082118283560307,
+          "balance_USDC.e": 89.613156
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x0e8fcea6153205e3a3a184b0613578c3d1729eab",
+          "fee": 500,
+          "liquidity_raw": 114152714,
+          "balance_WETH": 0.000352602168677981,
+          "balance_USDC.e": 11.329284
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC.e",
+          "pool": "0x38e81e616fa532201e4c7ff9953a9b40cc842f39",
+          "fee": 2500,
+          "liquidity_raw": 566742159801,
+          "balance_WETH": 0.000793217268896275,
+          "balance_USDC.e": 0.831868
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x42161084d0672e1d3f26a9b53e653be2084ff19c",
+          "fee": 100,
+          "liquidity_raw": 217077704445577,
+          "balance_WETH": 2.2371366636897996,
+          "balance_USDT": 2516.796528
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x641c00a822e8b671738d32a431a4fb6074e5c79d",
+          "fee": 500,
+          "liquidity_raw": 223127116712429369,
+          "balance_WETH": 1771.5273427692675,
+          "balance_USDT": 1468900.640655
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xc82819f72a9e77e2c0c3a69b3196478f44303cf4",
+          "fee": 3000,
+          "liquidity_raw": 21301806617427297,
+          "balance_WETH": 68.44283916763817,
+          "balance_USDT": 148133.051535
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x58039203442c9f2a45d5536bd021a383c7f3035c",
+          "fee": 10000,
+          "liquidity_raw": 117571096237528,
+          "balance_WETH": 4.2340951779717555,
+          "balance_USDT": 3336.191184
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x824d9bc425c599f46c700afdcae0867596f48ce2",
+          "fee": 100,
+          "liquidity_raw": 26432040034,
+          "balance_WETH": 0.000810912581158486,
+          "balance_USDT": 10.589166
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x96ada81328abce21939a51d971a63077e16db26e",
+          "fee": 500,
+          "liquidity_raw": 1030542878036670,
+          "balance_WETH": 9.762353728763637,
+          "balance_USDT": 5661.69058
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x92d543a8a158a6bc2c7018ae17803819cb9150b2",
+          "fee": 3000,
+          "liquidity_raw": 1041856064115049,
+          "balance_WETH": 5.17308646477696,
+          "balance_USDT": 17813.603888
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x7f9061b253545103b80698e579c9891718057dfc",
+          "fee": 10000,
+          "liquidity_raw": 201415314210,
+          "balance_WETH": 0.004303638550617161,
+          "balance_USDT": 10.525147
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/USDT",
+          "pool": "0xcb0e5bfa72bbb4d16ab5aa0c60601c438f04b4ad",
+          "reserve_token0_raw": 7434389021715808880,
+          "reserve_token1_raw": 17388021831,
+          "balance_WETH": 7.434389021715809,
+          "balance_USDT": 17388.021831
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/USDT",
+          "pool": "0x97b192198d164c2a1834295e302b713bc32c8f1d",
+          "reserve_token0_raw": 210678849886351461,
+          "reserve_token1_raw": 496279605,
+          "balance_WETH": 0.21067884988635147,
+          "balance_USDT": 496.279605
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x7cccba38e2d959fe135e79aebb57ccb27b128358",
+          "liquidity_raw": 559497049887180,
+          "balance_WETH": 6.068843918412634,
+          "balance_USDT": 4000.464592
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x389938cf14be379217570d8e4619e51fbdafaa21",
+          "fee": 100,
+          "liquidity_raw": 4486592917098317,
+          "balance_WETH": 24.89779881417007,
+          "balance_USDT": 17187.160144
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x0bacc7a9717e70ea0da5ac075889bd87d4c81197",
+          "fee": 500,
+          "liquidity_raw": 12445627789108806,
+          "balance_WETH": 59.307187837407916,
+          "balance_USDT": 52140.087741
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xaeab1336efc2bf74bc89fcf0e33e6013f3c8587e",
+          "fee": 2500,
+          "liquidity_raw": 242311068620168,
+          "balance_WETH": 0.9213945121806719,
+          "balance_USDT": 788.185848
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x5b7dd61f102280c6c121650e328f1e9f0af2543f",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 0.0001172880366132,
+          "balance_USDT": 2.051257
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x0779450b087a86c40e074ac00a65eabe1cbc0f87",
+          "fee": 100,
+          "liquidity_raw": 583154472040199748,
+          "balance_WETH": 0.04787106057501219,
+          "balance_DAI": 38.34254624427095
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x31fa55e03bad93c7f8affdd2ec616ebfde246001",
+          "fee": 500,
+          "liquidity_raw": 39119253000963252508,
+          "balance_WETH": 0.800498610760138,
+          "balance_DAI": 1444.3266536537324
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0xa961f0473da4864c5ed28e00fcc53a3aab056c1b",
+          "fee": 3000,
+          "liquidity_raw": 4479858969149398572752,
+          "balance_WETH": 20.756401272662035,
+          "balance_DAI": 63534.29624176792
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x2e630136c42bc72f1285743347ba77a75077aff4",
+          "fee": 10000,
+          "liquidity_raw": 42151789179321365433,
+          "balance_WETH": 0.1875812854494082,
+          "balance_DAI": 651.4163998267776
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x59311e6b9682eac59d8cac796ab1d9e323b020c3",
+          "fee": 100,
+          "liquidity_raw": 255847316144828380,
+          "balance_WETH": 0.005674658626865659,
+          "balance_DAI": 33.41610310974879
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x3370ea4a1640c657bdd94d71325541ba927f5aef",
+          "fee": 3000,
+          "liquidity_raw": 1379707222664458210,
+          "balance_WETH": 0.06810457329796427,
+          "balance_DAI": 68.10195073638714
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/DAI",
+          "pool": "0x692a0b300366d1042679397e40f3d2cb4b8f7d30",
+          "reserve_token0_raw": 1811236960992788292,
+          "reserve_token1_raw": 4230522716782996874669,
+          "balance_WETH": 1.8112369609927883,
+          "balance_DAI": 4230.522716782997
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/DAI",
+          "pool": "0x9fa7314525d5c706213468220c7c9820cfe629cb",
+          "reserve_token0_raw": 10750841790765904,
+          "reserve_token1_raw": 25863765063681914925,
+          "balance_WETH": 0.010750841790765905,
+          "balance_DAI": 25.863765063681914
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x6c0790a175dbce981301db099ef713794f41924a",
+          "liquidity_raw": 0,
+          "balance_WETH": 4.155394283751e-06,
+          "balance_DAI": 0.001995828111221441
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/DAI",
+          "pool": "0xd4db2d9f584380752859c2d38407723401608b21",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 3.40219577908e-07,
+          "balance_DAI": 0.000460784393786592
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x000e082e68623294bdda4da4e608f20fed91621d",
+          "fee": 500,
+          "liquidity_raw": 5736890747314407009,
+          "balance_WETH": 0.243950693910857,
+          "balance_DAI": 16.613953182709768
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x4246a394b439fd82160636d34c99294a4dd1623d",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_WETH": 5.0100457056297e-05,
+          "balance_DAI": 0.002749872819571437
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x03a3be7ab4aa263d42d63b6cc594f4fb3d3f3951",
+          "fee": 100,
+          "liquidity_raw": 288103527442,
+          "balance_WETH": 0.7009646589433562,
+          "balance_WBTC": 0.00321561
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x2f5e87c9312fa29aed5c179e456625d79015299c",
+          "fee": 500,
+          "liquidity_raw": 229495893825768226,
+          "balance_WETH": 9422.894745971293,
+          "balance_WBTC": 132.92056993
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x149e36e72726e0bcea5c59d40df2c43f60f5a22d",
+          "fee": 3000,
+          "liquidity_raw": 2605601284714290,
+          "balance_WETH": 281.58495343157745,
+          "balance_WBTC": 1.55134942
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x99dfc0126ed31e0169fc32db6b89adf9fee9a77e",
+          "fee": 10000,
+          "liquidity_raw": 208110695336907,
+          "balance_WETH": 8.888883318569865,
+          "balance_WBTC": 0.13772014
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0xbb08872aec88fa7bcda9faadccee8bfa806414f8",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 4.99562297621e-07,
+          "balance_WBTC": 3.62e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0xf79099596045a41bb2ae53fa6677576687242455",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_WETH": 1.7165032630846e-05,
+          "balance_WBTC": 5e-08
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x6f10667f314498649eb2f80da244e8c6e9f031d5",
+          "fee": 3000,
+          "liquidity_raw": 99355340802179,
+          "balance_WETH": 18.204750261957216,
+          "balance_WBTC": 0.49287692
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/WBTC",
+          "pool": "0x515e252b2b5c22b4b2b6df66c2ebeea871aa4d69",
+          "reserve_token0_raw": 15486590,
+          "reserve_token1_raw": 5287801101420318104,
+          "balance_WETH": 5.287801101420318,
+          "balance_WBTC": 0.1548659
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/WBTC",
+          "pool": "0x96059759c6492fb4e8a9777b65f307f2c811a34f",
+          "reserve_token0_raw": 1220529,
+          "reserve_token1_raw": 415709953574283052,
+          "balance_WETH": 0.41570995357428303,
+          "balance_WBTC": 0.01220529
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0xd845f7d4f4deb9ff5bcf09d140ef13718f6f6c71",
+          "liquidity_raw": 374889373573922,
+          "balance_WETH": 22.737087373563956,
+          "balance_WBTC": 0.17811662
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x4bfc22a4da7f31f8a912a79a7e44a822398b4390",
+          "fee": 100,
+          "liquidity_raw": 2815740422314365,
+          "balance_WETH": 307.877085480792,
+          "balance_WBTC": 1.99262757
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x54076c901d4fdf76c1fa1f77fafc3fc1022adbe5",
+          "fee": 500,
+          "liquidity_raw": 309821240440482,
+          "balance_WETH": 13.436223719006124,
+          "balance_WBTC": 0.22387989
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0xc46f301f589c6027b440778252dd9da239160fbc",
+          "fee": 2500,
+          "liquidity_raw": 619287339,
+          "balance_WETH": 0.000185284006730245,
+          "balance_WBTC": 4.25e-06
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/WBTC",
+          "pool": "0x9d51052d2ea0367e38efdc04c1324ee08c4189fe",
+          "fee": 10000,
+          "liquidity_raw": 109760272,
+          "balance_WETH": 5.4486315592603e-05,
+          "balance_WBTC": 7.52e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x89a4026e9ade251c67b7fb38054931a39936d9c5",
+          "fee": 100,
+          "liquidity_raw": 16066355083444004561,
+          "balance_WETH": 0.14738806558710893,
+          "balance_ARB": 3508.3605080182865
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xc6f780497a95e246eb9449f5e4770916dcd6396a",
+          "fee": 500,
+          "liquidity_raw": 284379146625363070123980,
+          "balance_WETH": 246.74075826285014,
+          "balance_ARB": 7228660.548427104
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x92c63d0e701caae670c9415d91c474f686298f00",
+          "fee": 3000,
+          "liquidity_raw": 9018237150106240710025,
+          "balance_WETH": 18.330333596593903,
+          "balance_ARB": 665219.5312861026
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x92fd143a8fa0c84e016c2765648b9733b0aa519e",
+          "fee": 10000,
+          "liquidity_raw": 5277503552733284889799,
+          "balance_WETH": 19.76883483775262,
+          "balance_ARB": 331783.15424958104
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x011cc642ae74315001eeb541c1d2d225e92ece3d",
+          "fee": 100,
+          "liquidity_raw": 162071240990707895,
+          "balance_WETH": 0.002738261928633321,
+          "balance_ARB": 323.6032767173082
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x99543bf98ca1830aa20d3eb12c1b9962f8eadc11",
+          "fee": 500,
+          "liquidity_raw": 64293924204928231244,
+          "balance_WETH": 0.13557017803866922,
+          "balance_ARB": 2359.0679504203763
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xb3942c9ffa04efbc1fa746e146be7565c76e3dc1",
+          "fee": 3000,
+          "liquidity_raw": 345674318054575772051,
+          "balance_WETH": 1.2332734391568905,
+          "balance_ARB": 37174.89793900882
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xb1674e700f0dcff2f7b4bfc68cb6d9dea7ddbb2e",
+          "fee": 10000,
+          "liquidity_raw": 49944446389217387,
+          "balance_WETH": 0.0004823707131568,
+          "balance_ARB": 11.057502610588244
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/ARB",
+          "pool": "0xbf6cbb1f40a542af50839cad01b0dc1747f11e18",
+          "reserve_token0_raw": 5402558057315692314,
+          "reserve_token1_raw": 75792529665068937228355,
+          "balance_WETH": 5.402558057315693,
+          "balance_ARB": 75792.52966506894
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "WETH/ARB",
+          "pool": "0xa6c5c7d189fa4eb5af8ba34e63dcdd3a635d433f",
+          "reserve_token0_raw": 8058875093405181425,
+          "reserve_token1_raw": 113154626208908116337265,
+          "balance_WETH": 8.058875093405181,
+          "balance_ARB": 113154.62620890811
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xe51635ae8136abac44906a8f230c2d235e9c195f",
+          "liquidity_raw": 5117361816042048332203,
+          "balance_WETH": 4.662500372356764,
+          "balance_ARB": 279152.5025669194
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x11d53ec50bc8f54b9357fbfe2a7de034fc00f8b3",
+          "fee": 100,
+          "liquidity_raw": 269388715826067448680,
+          "balance_WETH": 0.15584388159253784,
+          "balance_ARB": 67866.5669008968
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/ARB",
+          "pool": "0x0d7c4b40018969f81750d0a164c3839a77353efb",
+          "fee": 500,
+          "liquidity_raw": 75255265190091309389,
+          "balance_WETH": 0.4489849984511061,
+          "balance_ARB": 7475.137386678686
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xe7e407e082bb89fcee639a3d5cef91859f9ceaaa",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_WETH": 1.4542745472083e-05,
+          "balance_ARB": 3.3442712634069216
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/ARB",
+          "pool": "0xc45fc9f140b00e568e47012127456fc2fa29aca3",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 5.054753762745e-06,
+          "balance_ARB": 0.012920954428772297
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0x8e295789c9465487074a65b1ae9ce0351172393f",
+          "fee": 100,
+          "liquidity_raw": 549094198661252,
+          "balance_USDC": 12041.866353,
+          "balance_USDC.e": 35334.687253
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xa9e9cb16e922892aa563a5adb0f7d976efce36fb",
+          "fee": 500,
+          "liquidity_raw": 105658445,
+          "balance_USDC": 51.497896,
+          "balance_USDC.e": 34.75187
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xd2d3b78fef22406696ef9e7fe9bbecf98802690d",
+          "fee": 3000,
+          "liquidity_raw": 4338025614,
+          "balance_USDC": 16.647075,
+          "balance_USDC.e": 13.766
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0x41bcf70432c90ba007faab2d3ac4a4a615b6bba3",
+          "fee": 10000,
+          "liquidity_raw": 43727357,
+          "balance_USDC": 4.746407,
+          "balance_USDC.e": 1.722639
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xcda3b7bec56dbb562453231f142f63d3b00f8eb3",
+          "fee": 500,
+          "liquidity_raw": 987837133854,
+          "balance_USDC": 847.700192,
+          "balance_USDC.e": 519.932714
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/USDC.e",
+          "pool": "0xc221597efd286d3c9f234e47e9c2668bc2097834",
+          "reserve_token0_raw": 18691172,
+          "reserve_token1_raw": 18757400,
+          "balance_USDC": 18.691172,
+          "balance_USDC.e": 18.7574
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC/USDC.e",
+          "pool": "0xc1ad239594c165bd4d8847d281232172a4520818",
+          "reserve_token0_raw": 6218479938,
+          "reserve_token1_raw": 6641261495,
+          "balance_USDC": 6218.479938,
+          "balance_USDC.e": 6641.261495
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xc86eb7b85807020b4548ee05b54bfc956eebbfcd",
+          "liquidity_raw": 1223180116129033,
+          "balance_USDC": 46413.974763,
+          "balance_USDC.e": 17929.132362
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xe8bb56ee968333bf18f9cbbe8eeef350540f9607",
+          "fee": 100,
+          "liquidity_raw": 222875236249474,
+          "balance_USDC": 3878.083525,
+          "balance_USDC.e": 18670.237263
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xc5c3e9f4ef6ee08906779dbc3b54896ed4886a60",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 3.099832,
+          "balance_USDC.e": 118.061103
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0x4cafe03a948bae458eed6fdf278306d26b0bb33d",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.142244,
+          "balance_USDC.e": 0.00017
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDC.e",
+          "pool": "0xed6595aad72995361de763687ad0ef3c6e67ea85",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.001034,
+          "balance_USDC.e": 0.000677
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xbe3ad6a5669dc0b8b12febc03608860c31e2eef6",
+          "fee": 100,
+          "liquidity_raw": 3875205700014422,
+          "balance_USDC": 226089.729428,
+          "balance_USDT": 1031550.142463
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xbce73c2e5a623054b0e8e2428e956f4b9d0412a5",
+          "fee": 500,
+          "liquidity_raw": 2734467469268,
+          "balance_USDC": 1836.998546,
+          "balance_USDT": 14506.596781
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x9957ab69651efe39b17c778e1435258f6a2cd314",
+          "fee": 3000,
+          "liquidity_raw": 12834578681,
+          "balance_USDC": 114.466196,
+          "balance_USDT": 90.852301
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xd7e7ad63359e2aa9e841f6e1326fb7e69479a50b",
+          "fee": 10000,
+          "liquidity_raw": 2492444436,
+          "balance_USDC": 407.823065,
+          "balance_USDT": 297.611266
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xd1e1ac29b31b35646eabd77163e212b76fe3b6a2",
+          "fee": 100,
+          "liquidity_raw": 10565848188256,
+          "balance_USDC": 2526.736331,
+          "balance_USDT": 9914.223438
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x13e4cad477cf2bf8d57f366a260c611435115a39",
+          "fee": 500,
+          "liquidity_raw": 3004267679,
+          "balance_USDC": 15.27767,
+          "balance_USDT": 31.82319
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x4c4d74a9239743da192d77993ec1d36ac1efea7b",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDC": 2e-06,
+          "balance_USDT": 1e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x5f91a30b9217115ebfb2d085e5f3b39d2f67f509",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 1e-06,
+          "balance_USDT": 1e-06
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/USDT",
+          "pool": "0x8cebfb915f7aa8474abcf0fff11d869a256eb887",
+          "reserve_token0_raw": 31531186,
+          "reserve_token1_raw": 32212229,
+          "balance_USDC": 31.531186,
+          "balance_USDT": 32.212229
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC/USDT",
+          "pool": "0x935763d7c14925690b89b14d738ecd8bf37db39a",
+          "reserve_token0_raw": 40579654,
+          "reserve_token1_raw": 40574038,
+          "balance_USDC": 40.579654,
+          "balance_USDT": 40.574038
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xa17afcab059f3c6751f5b64347b5a503c3291868",
+          "liquidity_raw": 12188826535222,
+          "balance_USDC": 3947.581864,
+          "balance_USDT": 22024.078669
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x7e928afb59f5de9d2f4d162f754c6eb40c88aa8e",
+          "fee": 100,
+          "liquidity_raw": 264547508001822,
+          "balance_USDC": 14715.78999,
+          "balance_USDT": 123332.860403
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x9e3b6c5e120602ac878becd217f2828841755011",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 1e-06,
+          "balance_USDT": 2e-06
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xf513c813e1c01473e151176365311a1de44205af",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 1e-06,
+          "balance_USDT": 0.00755
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x7cf803e8d82a50504180f417b8bc7a493c0a0503",
+          "fee": 100,
+          "liquidity_raw": 921352438572170812795,
+          "balance_USDC": 66884.255776,
+          "balance_DAI": 35050.91407833866
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x9264e764e6d5d252a5c17c457c9bb059b8831bb1",
+          "fee": 500,
+          "liquidity_raw": 79993443989698363,
+          "balance_USDC": 375.442105,
+          "balance_DAI": 400.29817929180035
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xd46c8a1940113ae64f960b7aa12ef5dcab0ffe0e",
+          "fee": 3000,
+          "liquidity_raw": 576794771418096,
+          "balance_USDC": 16.490386,
+          "balance_DAI": 11.462765548400483
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xbff936a43e6fe6f891789be66043bcc8effee938",
+          "fee": 10000,
+          "liquidity_raw": 114788950933342,
+          "balance_USDC": 12.316225,
+          "balance_DAI": 11.406924233433287
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x5dcf1aa6b3422d8a59dc0e00904e02a1c1ea5a58",
+          "fee": 100,
+          "liquidity_raw": 392509036267,
+          "balance_USDC": 0.300642,
+          "balance_DAI": 0.127056744756213
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/DAI",
+          "pool": "0x712508685c7f4ac3de31427222269e872c72eb65",
+          "reserve_token0_raw": 2626,
+          "reserve_token1_raw": 2618690424238651,
+          "balance_USDC": 0.002626,
+          "balance_DAI": 0.002618690424238651
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC/DAI",
+          "pool": "0xa635415f18cda471f5384465a9bc2097755e137f",
+          "reserve_token0_raw": 5139,
+          "reserve_token1_raw": 5112304256379874,
+          "balance_USDC": 0.005139,
+          "balance_DAI": 0.005112304256379874
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x45fae8d0d2ace73544baab452f9020925afccc75",
+          "liquidity_raw": 400994873669482637142,
+          "balance_USDC": 28208.225775,
+          "balance_DAI": 77974.10767560736
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xd5d1f85e65ce58a4782852f4a845b1d6ca71f1a2",
+          "fee": 100,
+          "liquidity_raw": 119246279639692118099,
+          "balance_USDC": 10821.213084,
+          "balance_DAI": 7132.116975948372
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xab43d9a705166e0ec0fe0fb0ab2147ab04c8f6f2",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.001019,
+          "balance_DAI": 0.000984174867980668
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0xbd65e976bd6b0b59232144c7966e1065024b874c",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.006352,
+          "balance_WBTC": 5.774e-05
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x0e4831319a50228b9e450861297ab92dee15b44f",
+          "fee": 500,
+          "liquidity_raw": 1682260440853,
+          "balance_USDC": 2465386.270706,
+          "balance_WBTC": 76.76558461
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x6985cb98ce393fce8d6272127f39013f61e36166",
+          "fee": 3000,
+          "liquidity_raw": 37694429446,
+          "balance_USDC": 79344.776297,
+          "balance_WBTC": 1.10984394
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x719826896832c9deaa868272f2dd55cf1e5ca3e7",
+          "fee": 10000,
+          "liquidity_raw": 435547514,
+          "balance_USDC": 1148.586367,
+          "balance_WBTC": 0.05364747
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x6fe8728c7b62f78ac71d1ee2b3dda6ca1a6f584d",
+          "fee": 100,
+          "liquidity_raw": 88,
+          "balance_USDC": 0.014832,
+          "balance_WBTC": 1.53e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x699f628a8a1de0f28cf9181c1f8ed848ebb0bbdf",
+          "fee": 500,
+          "liquidity_raw": 1104442818,
+          "balance_USDC": 1565.95107,
+          "balance_WBTC": 0.03452752
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x4e5c883d6e9cce0be8e464c3066bcff036da674a",
+          "fee": 3000,
+          "liquidity_raw": 965831,
+          "balance_USDC": 27.493494,
+          "balance_WBTC": 0.0003407
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x3dcaffae72ff58a03a9a4ac90eb9aea40d1374cf",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 1.3e-05,
+          "balance_WBTC": 1.3e-07
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/WBTC",
+          "pool": "0x75e5b52dc1785e3d99c41d8136b12118b13c63ae",
+          "reserve_token0_raw": 457,
+          "reserve_token1_raw": 371662,
+          "balance_USDC": 0.371662,
+          "balance_WBTC": 4.57e-06
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC/WBTC",
+          "pool": "0xad94d6fbfdfc29dee39417a822994d53a4f287e9",
+          "reserve_token0_raw": 151,
+          "reserve_token1_raw": 122884,
+          "balance_USDC": 0.122884,
+          "balance_WBTC": 1.51e-06
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x02be4f98fc9ee4f612a139d84494cbf6c6c7f97f",
+          "liquidity_raw": 52839374,
+          "balance_USDC": 35.065827,
+          "balance_WBTC": 0.00941285
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x5a17cbf5f866bde11c28861a2742764fac0eba4b",
+          "fee": 100,
+          "liquidity_raw": 858627642,
+          "balance_USDC": 1668.517234,
+          "balance_WBTC": 0.13013936
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0x843ac8dc6d34aeb07a56812b8b36429ee46bdd07",
+          "fee": 500,
+          "liquidity_raw": 131666812186,
+          "balance_USDC": 144773.395773,
+          "balance_WBTC": 2.70706068
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/WBTC",
+          "pool": "0xde51a09098cc7a06747675a2efcaa1d8b315292d",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDC": 1.59619,
+          "balance_WBTC": 8.23e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x616a2a065bfe53da48e83e7d709fb428aa3c9f5b",
+          "fee": 100,
+          "liquidity_raw": 52446464655060,
+          "balance_USDC": 32.289911,
+          "balance_ARB": 2882.2311933654646
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/ARB",
+          "pool": "0xb0f6ca40411360c03d41c5ffc5f179b8403cdcf8",
+          "fee": 500,
+          "liquidity_raw": 69708083125078824,
+          "balance_USDC": 7294.112506,
+          "balance_ARB": 618827.8421825856
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/ARB",
+          "pool": "0xaebdca1bc8d89177ebe2308d62af5e74885dccc3",
+          "fee": 3000,
+          "liquidity_raw": 882494283937303890,
+          "balance_USDC": 41699.369677,
+          "balance_ARB": 924993.3046864846
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/ARB",
+          "pool": "0xac9a19e85a49bacc28bd2deecab3cdfadbfc3e00",
+          "fee": 10000,
+          "liquidity_raw": 863429545354197,
+          "balance_USDC": 3373.015868,
+          "balance_ARB": 38075.25461581588
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x2deeef8d852e7c4e66eab5e4efe0206d60dc06c3",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC": 5.3e-05,
+          "balance_ARB": 4.1e-17
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/ARB",
+          "pool": "0xfa1cc0cae7779b214b1112322a2d1cf0b511c3bc",
+          "fee": 500,
+          "liquidity_raw": 2653397642558,
+          "balance_USDC": 22.094246,
+          "balance_ARB": 5783.833330353246
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x14716a16ef9eeaada7e266bcf023b71d2c9adbf3",
+          "fee": 3000,
+          "liquidity_raw": 174064849056948,
+          "balance_USDC": 71.481892,
+          "balance_ARB": 427.58335684089735
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x4ea5b77307349147dcf47c2d86fbad178679265f",
+          "fee": 10000,
+          "liquidity_raw": 90540688,
+          "balance_USDC": 0.32563,
+          "balance_ARB": 3.8692197409500424
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/ARB",
+          "pool": "0x1f42712540f04478ea8fbb5a27d850a1cb1884f6",
+          "reserve_token0_raw": 131040532716515851325,
+          "reserve_token1_raw": 21623714,
+          "balance_USDC": 21.623714,
+          "balance_ARB": 131.04053271651586
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC/ARB",
+          "pool": "0x138c115bdcc8709d7f782ecc29dfb3829907d74b",
+          "reserve_token0_raw": 150793324330196859511,
+          "reserve_token1_raw": 25649954,
+          "balance_USDC": 25.649954,
+          "balance_ARB": 150.79332433019687
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC/ARB",
+          "pool": "0xfae2ae0a9f87fd35b5b0e24b47bac796a7eefea1",
+          "liquidity_raw": 42480301034091141,
+          "balance_USDC": 8448.830723,
+          "balance_ARB": 154222.12552341493
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x93cce474015007b38da0ecea96671ee4dc3d40ad",
+          "fee": 100,
+          "liquidity_raw": 1097548663595572,
+          "balance_USDC": 541.309489,
+          "balance_ARB": 19716.136869359052
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x9ffca51d23ac7f7df82da414865ef1055e5afcc3",
+          "fee": 500,
+          "liquidity_raw": 99839300081867359,
+          "balance_USDC": 7487.110341,
+          "balance_ARB": 400747.0832452583
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x7795d58e3f941592d07f7a7026e93b6a03ea8865",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.001408,
+          "balance_ARB": 0.013098943309569108
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/ARB",
+          "pool": "0x86a1d7d8cbddad1fdb931182d52624950ca1d066",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 1e-06,
+          "balance_ARB": 2e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x8c9d230d45d6cfee39a6680fb7cb7e8de7ea8e71",
+          "fee": 100,
+          "liquidity_raw": 634309159723,
+          "balance_USDC.e": 448.419981,
+          "balance_USDT": 33822.363187
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x13398e27a21be1218b6900cbedf677571df42a48",
+          "fee": 500,
+          "liquidity_raw": 8183356734654,
+          "balance_USDC.e": 14172.834728,
+          "balance_USDT": 19578.882495
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x4d7ce479ce0993e1ab98c15cee6d8f33926871da",
+          "fee": 3000,
+          "liquidity_raw": 67050762562,
+          "balance_USDC.e": 758.575569,
+          "balance_USDT": 807.973607
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0xdcca64e393ec2d5740bc3a021482f96089e9c59b",
+          "fee": 10000,
+          "liquidity_raw": 928936938,
+          "balance_USDC.e": 275.866334,
+          "balance_USDT": 250.6493
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0xd9e96f78b3c68ba79fd4dfad4ddf4f27bd1e2ecf",
+          "fee": 100,
+          "liquidity_raw": 13221507142,
+          "balance_USDC.e": 30.257061,
+          "balance_USDT": 278.628197
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0xa362f2ba002299f9fdc8fa7941a09ba8c2ce1d0e",
+          "fee": 500,
+          "liquidity_raw": 3783774,
+          "balance_USDC.e": 0.021337,
+          "balance_USDT": 0.012654
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0xe4c4f1e412da93d5ab1edf3b6088225ad061bbf2",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 5.000006,
+          "balance_USDT": 6e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x503bc747a0f70987bfea38a27bcd535b977b2235",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 3e-06,
+          "balance_USDT": 4e-06
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC.e/USDT",
+          "pool": "0x8165c70b01b7807351ef0c5ffd3ef010cabc16fb",
+          "reserve_token0_raw": 6216552185,
+          "reserve_token1_raw": 6208289370,
+          "balance_USDC.e": 6208.28937,
+          "balance_USDT": 6216.552185
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC.e/USDT",
+          "pool": "0x1c31fb3359357f6436565ccb3e982bc6bf4189ae",
+          "reserve_token0_raw": 3534701837,
+          "reserve_token1_raw": 3007197476,
+          "balance_USDC.e": 3007.197476,
+          "balance_USDT": 3534.701837
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x3ab5dd69950a948c55d1fbfb7500bf92b4bd4c48",
+          "liquidity_raw": 2949093170040,
+          "balance_USDC.e": 1293.599617,
+          "balance_USDT": 5090.760299
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x858dff46915d3f81bb7ff06158b2806164acb2a0",
+          "fee": 100,
+          "liquidity_raw": 23705867390,
+          "balance_USDC.e": 9.272535,
+          "balance_USDT": 541.371089
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0xbff3757e31edee3489c098cebd7c691e61ac0258",
+          "fee": 500,
+          "liquidity_raw": 21580794,
+          "balance_USDC.e": 1.098379,
+          "balance_USDT": 1.006419
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/USDT",
+          "pool": "0x280ae11f4329d94a69a8be97e892d27c8b650961",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 0.000704,
+          "balance_USDT": 0.000675
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0xf0428617433652c9dc6d1093a42adfbf30d29f74",
+          "fee": 100,
+          "liquidity_raw": 309928896930833710671,
+          "balance_USDC.e": 12151.003647,
+          "balance_DAI": 15116.330101405734
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0xd37af656abf91c7f548fffc0133175b5e4d3d5e6",
+          "fee": 500,
+          "liquidity_raw": 42067923141792217209,
+          "balance_USDC.e": 28099.715884,
+          "balance_DAI": 20814.918082894656
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0x0a5f3c8633b0abe29d229db1f730ed46a60dced2",
+          "fee": 3000,
+          "liquidity_raw": 1945710602472762,
+          "balance_USDC.e": 553.869613,
+          "balance_DAI": 589.295085983731
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0x63675e1973901da9b2f9134f1369aa0022b03369",
+          "fee": 10000,
+          "liquidity_raw": 738534516240688,
+          "balance_USDC.e": 664.688071,
+          "balance_DAI": 744.1254492238184
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0x1698837611eee2118dbe874ee84f3fa52ea49a52",
+          "fee": 100,
+          "liquidity_raw": 249832430067801132,
+          "balance_USDC.e": 51.931417,
+          "balance_DAI": 43.047131899870166
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0x6a098e29943dd0f6870b8c3cbb6ca7e9022dd176",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 2e-06,
+          "balance_DAI": 3e-18
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC.e/DAI",
+          "pool": "0x5602aba2111aa4ae90ad34a5b5b815f26d69c94b",
+          "reserve_token0_raw": 23433938409252019867324,
+          "reserve_token1_raw": 23469778078,
+          "balance_USDC.e": 23469.778078,
+          "balance_DAI": 23433.93840925202
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC.e/DAI",
+          "pool": "0x01efed58b534d7a7464359a6f8d14d986125816b",
+          "reserve_token0_raw": 1060011803451992639120,
+          "reserve_token1_raw": 1074507702,
+          "balance_USDC.e": 1074.507702,
+          "balance_DAI": 1060.0118034519926
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0xceadf572e8c9a4d1c66ae7577913c17d9069dcf3",
+          "liquidity_raw": 200775086199221,
+          "balance_USDC.e": 0.805297,
+          "balance_DAI": 9.720000815709069
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/DAI",
+          "pool": "0xc1f697a3fb3940ba85d550311d234b787c407eb9",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 1e-06,
+          "balance_DAI": 1e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0x09112f3863345d03fcf292e213dca8f62aa6514a",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 6.4e-05,
+          "balance_WBTC": 6.3e-07
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0xac70bd92f89e6739b3a08db9b6081a923912f73d",
+          "fee": 500,
+          "liquidity_raw": 5759101256,
+          "balance_USDC.e": 38461.927793,
+          "balance_WBTC": 0.38212516
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0xa62ad78825e3a55a77823f00fe0050f567c1e4ee",
+          "fee": 3000,
+          "liquidity_raw": 63730287,
+          "balance_USDC.e": 1979.843042,
+          "balance_WBTC": 0.0129536
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0x83450968ec7606f98df1c170f8c922d55a13f236",
+          "fee": 10000,
+          "liquidity_raw": 11519,
+          "balance_USDC.e": 0.640064,
+          "balance_WBTC": 6.65e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0x03bacc0c817190ac3739373d24533b200c797b50",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 0.000385,
+          "balance_WBTC": 3.47e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0xd98ad307829db9b1d61370a6628cc8aa7ca6cf8a",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 0.000471,
+          "balance_WBTC": 5.09e-06
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC.e/WBTC",
+          "pool": "0xff13348778cc2ced614f6f73a8e488ac11292f25",
+          "reserve_token0_raw": 10222,
+          "reserve_token1_raw": 8294477,
+          "balance_USDC.e": 8.294477,
+          "balance_WBTC": 0.00010222
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0x9dc5708aaf0d45b12636c7ce2960e71a8ea210c8",
+          "liquidity_raw": 1247531,
+          "balance_USDC.e": 35.276704,
+          "balance_WBTC": 0.00046117
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/WBTC",
+          "pool": "0x06607df154875f0507c33418707f366bd47a62fa",
+          "fee": 100,
+          "liquidity_raw": 25347029,
+          "balance_USDC.e": 44.873513,
+          "balance_WBTC": 0.00142151
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x855a24f58eb3ba4af6bfbd77173371ef9369a66b",
+          "fee": 100,
+          "liquidity_raw": 24414412380291,
+          "balance_USDC.e": 8.513699,
+          "balance_ARB": 113.20293325381888
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0xcda53b1f66614552f834ceef361a8d12a0b8dad8",
+          "fee": 500,
+          "liquidity_raw": 622794058517778022,
+          "balance_USDC.e": 54456.866036,
+          "balance_ARB": 1248535.8697711136
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x81c48d31365e6b526f6bbadc5c9aafd822134863",
+          "fee": 3000,
+          "liquidity_raw": 4154341411552982,
+          "balance_USDC.e": 7283.26178,
+          "balance_ARB": 56501.02421279957
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0xa8328bf492ba1b77ad6381b3f7567d942b000baf",
+          "fee": 10000,
+          "liquidity_raw": 63598418911319544,
+          "balance_USDC.e": 17619.614391,
+          "balance_ARB": 117326.71002427056
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x3ee8547e12ce2090a3dfa9ecb4409692d7733206",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 0.26438,
+          "balance_ARB": 0.35736140769639907
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0xd175127a4cec1990f0b84d8dfe015641257b3704",
+          "fee": 3000,
+          "liquidity_raw": 990047971,
+          "balance_USDC.e": 0.000397,
+          "balance_ARB": 0.09022210518153723
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x43c0e4d0d2a22755f8e4c90bd08b24edaf400ef9",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 2e-06,
+          "balance_ARB": 3e-18
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC.e/ARB",
+          "pool": "0x338b50b05f1300439a3ce80e6fbaa613051b3349",
+          "reserve_token0_raw": 4047994368301809295454,
+          "reserve_token1_raw": 675550025,
+          "balance_USDC.e": 675.550025,
+          "balance_ARB": 4047.994368301809
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDC.e/ARB",
+          "pool": "0xd40b7b05ab39a39658de1d7c9301a9ed765b3472",
+          "reserve_token0_raw": 371354774958834928570,
+          "reserve_token1_raw": 62103687,
+          "balance_USDC.e": 62.103687,
+          "balance_ARB": 371.3547749588349
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x4e635d35bb02576d0eab75ef5e7ebe61c12f3c76",
+          "liquidity_raw": 7146457879689,
+          "balance_USDC.e": 3.648058,
+          "balance_ARB": 20.948321413558567
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x3a63e393726640b33a78a3cac5e57fa6f35b69ed",
+          "fee": 100,
+          "liquidity_raw": 9026551646647707,
+          "balance_USDC.e": 784.737996,
+          "balance_ARB": 56070.65440611766
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0xe4e629c98e30011805382305e670f12b4e8dbaf0",
+          "fee": 500,
+          "liquidity_raw": 723808421916113,
+          "balance_USDC.e": 52.096107,
+          "balance_ARB": 8635.077039293954
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC.e/ARB",
+          "pool": "0x66c207494632df0adf81af291a58cf4181436f52",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC.e": 1.6e-05,
+          "balance_ARB": 6e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x7f580f8a02b759c350e6b8340e7c2d4b8162b6a9",
+          "fee": 100,
+          "liquidity_raw": 123835178377684162919,
+          "balance_USDT": 83252.55298,
+          "balance_DAI": 10442.13845865058
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x6387b0d5853184645cc9a77d6db133355d2eb4e4",
+          "fee": 500,
+          "liquidity_raw": 4123929653377199608,
+          "balance_USDT": 8792.005418,
+          "balance_DAI": 1874.7931102536309
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x6d78117425e49562eda06aa1db5f0dcf78c2e56f",
+          "fee": 3000,
+          "liquidity_raw": 90190542657337699,
+          "balance_USDT": 1097.835483,
+          "balance_DAI": 803.3996985670766
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x742e6ca176067f57b79be9f42e0df7cb94521e16",
+          "fee": 10000,
+          "liquidity_raw": 108416043536650,
+          "balance_USDT": 16.269698,
+          "balance_DAI": 13.793967134799368
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/DAI",
+          "pool": "0xb57d0a0981e5f099e6b076f6ecbbe203a8c01739",
+          "fee": 100,
+          "liquidity_raw": 219468310205634,
+          "balance_USDT": 0.199768,
+          "balance_DAI": 0.04526644207265376
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x06c9f57549eae96978dc3c2d17913c1215cef3b6",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 3e-06,
+          "balance_DAI": 5e-18
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/DAI",
+          "pool": "0xcc2b91d28d754dff160d0924e16e6d213cbd24f8",
+          "fee": 3000,
+          "liquidity_raw": 23895168655188402,
+          "balance_USDT": 54.683758,
+          "balance_DAI": 18.567981493682908
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/DAI",
+          "pool": "0xde8b42254ee76da61c50df18705467f63695d4c0",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDT": 1e-06,
+          "balance_DAI": 1e-18
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDT/DAI",
+          "pool": "0xfbcbbbb551a5fc5ad7796ab6bbff01fb0dd2e180",
+          "reserve_token0_raw": 1281235895156862222289,
+          "reserve_token1_raw": 1282845938,
+          "balance_USDT": 1282.845938,
+          "balance_DAI": 1281.2358951568622
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDT/DAI",
+          "pool": "0x12999d79055435b10e20c2db079e445d187253f3",
+          "reserve_token0_raw": 21710564463295386693,
+          "reserve_token1_raw": 21786264,
+          "balance_USDT": 21.786264,
+          "balance_DAI": 21.710564463295388
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x90ea8c74ccd6bd6565564705fea31216dd1a74c8",
+          "liquidity_raw": 0,
+          "balance_USDT": 0.019237,
+          "balance_DAI": 4.49e-16
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x9fd6ebb5be86447616500c9fc656f1247cbbd170",
+          "fee": 100,
+          "liquidity_raw": 5082273473984296,
+          "balance_USDT": 7.845959,
+          "balance_DAI": 1.1429634759916012
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x3966e8ad9d5c033f6e7120978a57ead8a146a7e1",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 0.060719,
+          "balance_DAI": 0.061436022532239794
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x11dd0cb2b2e8f6b8fb786fb4180d13877e2f31f3",
+          "fee": 100,
+          "liquidity_raw": 413441,
+          "balance_USDT": 2.500216,
+          "balance_WBTC": 6.395e-05
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x5969efdde3cf5c0d9a88ae51e47d721096a97203",
+          "fee": 500,
+          "liquidity_raw": 905517055367,
+          "balance_USDT": 1483630.600101,
+          "balance_WBTC": 29.76092493
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x53c6ca2597711ca7a73b6921faf4031eedf71339",
+          "fee": 3000,
+          "liquidity_raw": 5903923367,
+          "balance_USDT": 22338.978591,
+          "balance_WBTC": 0.30516798
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x67d3e181e6dcc47f977c3a4b33ac65454b87b997",
+          "fee": 10000,
+          "liquidity_raw": 754544763,
+          "balance_USDT": 4500.527869,
+          "balance_WBTC": 0.01618328
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0xb616967014e263325de5f80c3a5c090282b42b32",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDT": 2e-06,
+          "balance_WBTC": 1e-08
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0xafadba8a2a51654987cdc385bd302443c461679e",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 7.812586,
+          "balance_WBTC": 1.055e-05
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x0ee21120c8c527eca08cb5336e86abf380994b4e",
+          "fee": 3000,
+          "liquidity_raw": 993317,
+          "balance_USDT": 28.580006,
+          "balance_WBTC": 0.00036411
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDT/WBTC",
+          "pool": "0xbdee369abf5c3dfff5dc65841e939747ba706a5d",
+          "reserve_token0_raw": 447,
+          "reserve_token1_raw": 373982,
+          "balance_USDT": 0.373982,
+          "balance_WBTC": 4.47e-06
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0xeaf03f385c642b02b5c563640bba7c4fbf96c27d",
+          "fee": 100,
+          "liquidity_raw": 943092551,
+          "balance_USDT": 726.923209,
+          "balance_WBTC": 0.08951881
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0xaa89ba37d1975ae294974ebb33db9d4b5324f2f2",
+          "fee": 500,
+          "liquidity_raw": 16946822509,
+          "balance_USDT": 30491.38221,
+          "balance_WBTC": 0.35946106
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/WBTC",
+          "pool": "0x91c3cd4a27808f0164e4f1bb1b1804b9c3d51787",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDT": 45.358614,
+          "balance_WBTC": 0.00541737
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/ARB",
+          "pool": "0xdb9f3540955b3c5df246dba83b96727fcb3424a1",
+          "fee": 100,
+          "liquidity_raw": 23097310479037,
+          "balance_USDT": 12.217036,
+          "balance_ARB": 157.69163140892238
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/ARB",
+          "pool": "0xb791ad21ba45c76629003b4a2f04c0d544406e37",
+          "fee": 500,
+          "liquidity_raw": 31065017118387557,
+          "balance_USDT": 3809.245825,
+          "balance_ARB": 57047.05301983833
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x97bca422ec0ee4851f2110ea743c1cd0a14835a1",
+          "fee": 3000,
+          "liquidity_raw": 310044229735015716,
+          "balance_USDT": 29701.042635,
+          "balance_ARB": 321894.8531281299
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x80151aae63b24a7e1837fe578fb6be026ae8abba",
+          "fee": 10000,
+          "liquidity_raw": 16892911048127424,
+          "balance_USDT": 3462.41711,
+          "balance_ARB": 38475.72217189571
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/ARB",
+          "pool": "0xfc60eb5b96b88a0256f260d104ab70cd87693cec",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 2.5e-05,
+          "balance_ARB": 3.7e-17
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x1cbc69e7dadc7332612b5fbf41c3037cb3d33f53",
+          "fee": 3000,
+          "liquidity_raw": 87370865077857,
+          "balance_USDT": 36.366038,
+          "balance_ARB": 213.67094066722242
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x25f3e23fd3c0e284297aa48a30f01e6444cd90fc",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDT": 5e-06,
+          "balance_ARB": 1.9283739853526e-05
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDT/ARB",
+          "pool": "0x67bf6fb81996f1968005be5e40b5a60324930a9f",
+          "reserve_token0_raw": 108543409152921275259,
+          "reserve_token1_raw": 18544391,
+          "balance_USDT": 18.544391,
+          "balance_ARB": 108.54340915292127
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "USDT/ARB",
+          "pool": "0x669930dcb297575cda5663a55581d0a331b3783c",
+          "reserve_token0_raw": 41158939459988562916,
+          "reserve_token1_raw": 6943485,
+          "balance_USDT": 6.943485,
+          "balance_ARB": 41.15893945998856
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x36e4c8fd37e99f76de550c05face6600c221affc",
+          "liquidity_raw": 0,
+          "balance_USDT": 1.704668,
+          "balance_ARB": 20.108964855635218
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/ARB",
+          "pool": "0xb19005b42e2dcc65fb6a5598db329edfe365a0b2",
+          "fee": 100,
+          "liquidity_raw": 72116064154,
+          "balance_USDT": 39.336016,
+          "balance_ARB": 72704.1788893469
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x81d1cc282e9a097115e59f67b9d81d4d1d00ac51",
+          "fee": 500,
+          "liquidity_raw": 764451722275893,
+          "balance_USDT": 72.294001,
+          "balance_ARB": 14492.550963409456
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/ARB",
+          "pool": "0xeff5139e7a9db7df2d00d5a1be30a6a04b07baf0",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDT": 0.00158,
+          "balance_ARB": 0.014600142233228398
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/ARB",
+          "pool": "0x812aded4f43a33c0ffb9377b809efaec63c12065",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDT": 0.192054,
+          "balance_ARB": 0.39650265878413765
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0xc35ab4ee32198d3f7e82f9e5aa66daafb7a73c6e",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_DAI": 1.44e-16,
+          "balance_WBTC": 1.27e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0x46c47c8daabca3e15bf238cda365894046bafa23",
+          "fee": 3000,
+          "liquidity_raw": 9734526755861926,
+          "balance_DAI": 38666.45203870397,
+          "balance_WBTC": 0.13819425
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0x2c089ee1080b091fb3b73df94f7840b33fbca020",
+          "fee": 10000,
+          "liquidity_raw": 2529254224,
+          "balance_DAI": 0.07362322889423427,
+          "balance_WBTC": 1.61e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0xf3a7327cb2d80cbf64abe355c23e6d06e013361d",
+          "fee": 3000,
+          "liquidity_raw": 645619517097,
+          "balance_DAI": 18.545867566725192,
+          "balance_WBTC": 0.00022504
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0x4e8cf066a9eacd71787323d3bd7b7604f4cb7a45",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_DAI": 1e-18,
+          "balance_WBTC": 1e-08
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "DAI/WBTC",
+          "pool": "0x5933402ef279a609a4287e4e88a4cf0d31a413ad",
+          "reserve_token0_raw": 109,
+          "reserve_token1_raw": 96878463891917861,
+          "balance_DAI": 0.09687846389191786,
+          "balance_WBTC": 1.09e-06
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "DAI/WBTC",
+          "pool": "0xda7b0411c753c068cbbe87059bcae2446358f9ed",
+          "reserve_token0_raw": 17,
+          "reserve_token1_raw": 12277608580027265,
+          "balance_DAI": 0.012277608580027265,
+          "balance_WBTC": 1.7e-07
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "DAI/WBTC",
+          "pool": "0x7264e236fea579996b9c041e48c470fa90505d5b",
+          "fee": 100,
+          "liquidity_raw": 13480341379,
+          "balance_DAI": 0.3844677435303261,
+          "balance_WBTC": 5.11e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/ARB",
+          "pool": "0x254026b59805235f73cd8c388cc886614d2ce78d",
+          "fee": 100,
+          "liquidity_raw": 5157751523504289158,
+          "balance_DAI": 2.161046268448116,
+          "balance_ARB": 18.25925210887948
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/ARB",
+          "pool": "0x1001dd6dd96a89771eb268929a583c8c1ac924ba",
+          "fee": 500,
+          "liquidity_raw": 476243212659953652,
+          "balance_DAI": 0.27801003005497377,
+          "balance_ARB": 5.151904910306626
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/ARB",
+          "pool": "0xc051405edef0e64ebfc501cfe1158eb0d74f3208",
+          "fee": 3000,
+          "liquidity_raw": 4478224459520359773139,
+          "balance_DAI": 139.44235354400604,
+          "balance_ARB": 7399.931900515154
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/ARB",
+          "pool": "0x7f457e25a92bad1aeecf2250a4ff80135f4e35c1",
+          "fee": 10000,
+          "liquidity_raw": 22977744292739751630809,
+          "balance_DAI": 2618.1013165254512,
+          "balance_ARB": 37939.37266606349
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "DAI/ARB",
+          "pool": "0xb38cfad7b64f4dd8187a9e40e14cfdbde22f1309",
+          "fee": 3000,
+          "liquidity_raw": 87230473937998550302,
+          "balance_DAI": 35.80084045414279,
+          "balance_ARB": 212.6038418776889
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "DAI/ARB",
+          "pool": "0x43b931576fee9730b9404c5cad286e5dd0590415",
+          "fee": 10000,
+          "liquidity_raw": 1608283198393042638,
+          "balance_DAI": 5.35200014966415,
+          "balance_ARB": 19.13367794004168
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "DAI/ARB",
+          "pool": "0x3abc85dff360cf56ad5348227a898bcaba0ee2cb",
+          "reserve_token0_raw": 3371257589867047353,
+          "reserve_token1_raw": 663431754738408995,
+          "balance_DAI": 0.663431754738409,
+          "balance_ARB": 3.371257589867047
+        },
+        {
+          "dex": "camelot_v2",
+          "pair": "DAI/ARB",
+          "pool": "0xf60d56b5382337dec47ed5c7053b8fee629a54b5",
+          "reserve_token0_raw": 7618010759124180402,
+          "reserve_token1_raw": 1343612041083576474,
+          "balance_DAI": 1.3436120410835766,
+          "balance_ARB": 7.61801075912418
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "DAI/ARB",
+          "pool": "0xba0001f1f53aa328da11a26011cbc4ff961c1605",
+          "liquidity_raw": 0,
+          "balance_DAI": 0.000926281064511428,
+          "balance_ARB": 0.08110821585583741
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "DAI/ARB",
+          "pool": "0x422840f0eb0cb0c931f5932c1e01e08ca0b08da2",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_DAI": 0.000698331858280483,
+          "balance_ARB": 0.006427093612373383
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0x214fb3fef13e49b01abd4504c23defb735168341",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WBTC": 2.3e-06,
+          "balance_ARB": 0.002170727172862235
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0x0b040426b92c405d39c31263f1f98680e84cb699",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_WBTC": 9e-08,
+          "balance_ARB": 1e-17
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0x689c96ceab93f5e131631d225d75dea3fd37747e",
+          "fee": 3000,
+          "liquidity_raw": 57765615234446005,
+          "balance_WBTC": 0.53992018,
+          "balance_ARB": 650993.7432917752
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0x12c796f54c13183ed00e394036509349126f3a07",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WBTC": 2.608e-05,
+          "balance_ARB": 0.5365437568869992
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0xe65ac00dd2a781780e1902fb7e9f77509602f22c",
+          "fee": 3000,
+          "liquidity_raw": 5703648843719,
+          "balance_WBTC": 0.00081789,
+          "balance_ARB": 398.47095311787524
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0xec9d135a8d404cbc528f8a92115b9d67e26cf6ea",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WBTC": 1.36e-06,
+          "balance_ARB": 0.306671510644537
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WBTC/ARB",
+          "pool": "0x91f0f14370c83bc108cc03cf35cd0b9ccea4b1a5",
+          "reserve_token0_raw": 51,
+          "reserve_token1_raw": 208475259631250421,
+          "balance_WBTC": 5.1e-07,
+          "balance_ARB": 0.2084752596312504
+        },
+        {
+          "dex": "camelot_algebra_v3",
+          "pair": "WBTC/ARB",
+          "pool": "0x5d6bd8b091c14432abee34b726ff226168adfdb8",
+          "liquidity_raw": 0,
+          "balance_WBTC": 2e-08,
+          "balance_ARB": 3e-18
+        }
+      ]
+    },
+    "base": {
+      "chain_id": 8453,
+      "rpc": "https://mainnet.base.org",
+      "verified_at_block": 53032610,
+      "verified_at_utc": "2026-10-24T15:09:27Z",
+      "aave_v3": {
+        "pool_addresses_provider": "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D",
+        "pool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+        "pool_implementation_eip1967": "0xa4abc5fcba6d0d7e3d144d6dbf6cb6128599dfdb",
+        "flashloan_premium_total_bps": 5,
+        "flashloan_premium_to_protocol_bps": 10000,
+        "flashLoanSimple_available": true,
+        "reserves": {
+          "WETH": {
+            "asset": "0x4200000000000000000000000000000000000006",
+            "active": true,
+            "frozen": false,
+            "paused": false,
+            "flashloan_enabled": true,
+            "decimals": 18
+          },
+          "USDC": {
+            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "active": true,
+            "frozen": false,
+            "paused": false,
+            "flashloan_enabled": true,
+            "decimals": 6
+          }
+        },
+        "verified": true,
+        "sources": "https://www.npmjs.com/package/@bgd-labs/aave-address-book (v4.44.22, src/AaveV3Arbitrum.sol, src/AaveV3Base.sol)"
+      },
+      "dexes": {
+        "uniswap_v3": {
+          "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+          "swap_router02": "0x2626664c2603336E57B271c5C0b26F421741e481",
+          "quoter_v2": "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+          "nonfungible_position_manager": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+          "fee_tiers_bps_x100": [
+            100,
+            500,
+            3000,
+            10000
+          ],
+          "sources": "https://docs.uniswap.org/contracts/v3/reference/deployments/arbitrum-deployments and .../base-deployments; factory also in @uniswap/v3-sdk constants",
+          "note": "quoter_v2 corrected after an on-chain check; the docs table is ambiguous between Base Sepolia and Base mainnet rows, on-chain factory()/code checks resolve it",
+          "onchain_factory_code_bytes": 24535,
+          "router_factory_matches": true,
+          "npm_factory_matches": true
+        },
+        "sushi_v2": {
+          "factory": "0x71524B4f93c58fcbF659783284E38825f0622859",
+          "router": "0x6BDED42c6DA8FBf0d2bA55B2fa120C5e0c8D7891",
+          "sources": "npm @sushiswap/v2-sdk 0.0.11 dist/constants.js; npm @sushiswap/v3-sdk 1.0.12 dist/constants.js",
+          "onchain_factory_code_bytes": 11264,
+          "router_factory_matches": true
+        },
+        "sushi_v3": {
+          "factory": "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
+          "nonfungible_position_manager": "0x80C7DD17B01855a6D2347444a0FCC36136a314de",
+          "sources": "npm @sushiswap/v2-sdk 0.0.11 dist/constants.js; npm @sushiswap/v3-sdk 1.0.12 dist/constants.js",
+          "onchain_factory_code_bytes": 24535,
+          "npm_factory_matches": true
+        },
+        "aerodrome_v2": {
+          "pool_factory": "0x420DD381b31aEf6683db6B902084cB0FFECe40Da",
+          "router": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+          "sources": "https://github.com/aerodrome-finance/contracts README.md (Base deployments table)",
+          "onchain_factory_code_bytes": 3516
+        },
+        "aerodrome_slipstream": {
+          "initial_deployment": {
+            "pool_factory": "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A",
+            "quoter_v2": "0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0",
+            "swap_router": "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5",
+            "nonfungible_position_manager": "0x827922686190790b37229fd06084350E74485b72"
+          },
+          "gauge_caps_deployment": {
+            "pool_factory": "0xaDe65c38CD4849aDBA595a4323a8C7DdfE89716a",
+            "quoter": "0x3d4C22254F86f64B7eC90ab8F7aeC1FBFD271c6C",
+            "swap_router": "0xcbBb8035cAc7D4B3Ca7aBb74cF7BdF900215Ce0D",
+            "nonfungible_position_manager": "0xa990C6a764b73BF43cee5Bb40339c3322FB9D55F"
+          },
+          "gauges_v3_deployment": {
+            "pool_factory": "0xf8f2eB4940CFE7d13603DDDD87f123820Fc061Ef",
+            "quoter": "0x514c8B5f54112481E28028F1166Bd78501089259",
+            "swap_router": "0x698Cb2b6dd822994581fEa6eA4Fc755d1363A92F",
+            "nonfungible_position_manager": "0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53"
+          },
+          "sources": "https://github.com/aerodrome-finance/slipstream README.md (Base deployments: Initial, Gauge Caps, Gauges V3)",
+          "note": "all three factories hold live WETH/USDC pools on-chain; which is canonical today was not determined from docs",
+          "onchain_factory_code_bytes": null
+        },
+        "pancake_v3": {
+          "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+          "deployer": "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9",
+          "fee_tiers_bps_x100": [
+            100,
+            500,
+            2500,
+            10000
+          ],
+          "sources": "npm @pancakeswap/v3-sdk 3.10.3 dist/constants.d.ts (FACTORY_ADDRESSES)",
+          "onchain_factory_code_bytes": 5151
+        }
+      },
+      "tokens": {
+        "WETH": {
+          "address": "0x4200000000000000000000000000000000000006",
+          "symbol_onchain": "WETH",
+          "decimals_onchain": 18,
+          "verified": true
+        },
+        "USDC": {
+          "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "symbol_onchain": "USDC",
+          "decimals_onchain": 6,
+          "verified": true
+        },
+        "USDT": {
+          "address": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+          "symbol_onchain": "USDT",
+          "decimals_onchain": 6,
+          "verified": true
+        },
+        "DAI": {
+          "address": "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+          "symbol_onchain": "DAI",
+          "decimals_onchain": 18,
+          "verified": true
+        },
+        "cbBTC": {
+          "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+          "symbol_onchain": "cbBTC",
+          "decimals_onchain": 8,
+          "verified": true
+        },
+        "cbETH": {
+          "address": "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+          "symbol_onchain": "cbETH",
+          "decimals_onchain": 18,
+          "verified": true
+        }
+      },
+      "eth_usd_feed_chainlink": {
+        "address": "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+        "description": "ETH / USD",
+        "decimals": 8,
+        "answer_1e8": 231770636656,
+        "price_usd": 2317.70636656,
+        "updatedAt": 1792854511,
+        "verified": true
+      },
+      "balancer_v2_vault": {
+        "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+        "code_bytes": 24512,
+        "flash_loan_fee_1e18": 0,
+        "source": "on-chain bytecode and fee read only; not listed in the official npm deployments package for Base"
+      },
+      "pools": [
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xb4cb800910b228ed3d0834cf79d697127bbb00e5",
+          "fee": 100,
+          "liquidity_raw": 38308449453911891,
+          "balance_WETH": 179.19918042110945,
+          "balance_USDC": 104972.378467
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+          "fee": 500,
+          "liquidity_raw": 759370167387645868,
+          "balance_WETH": 2778.3247487993613,
+          "balance_USDC": 1989026.100605
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+          "fee": 3000,
+          "liquidity_raw": 20447392299788767797,
+          "balance_WETH": 53958.532811252786,
+          "balance_USDC": 27950628.435968
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69",
+          "fee": 10000,
+          "liquidity_raw": 68369072146364804,
+          "balance_WETH": 109.52293620851466,
+          "balance_USDC": 525432.627448
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x482fe995c4a52bc79271ab29a53591363ee30a89",
+          "fee": 100,
+          "liquidity_raw": 16941215787437,
+          "balance_WETH": 0.34388875628919285,
+          "balance_USDC": 1857.525363
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x57713f7716e0b0f65ec116912f834e49805480d2",
+          "fee": 500,
+          "liquidity_raw": 8434441590430665,
+          "balance_WETH": 23.667938902161,
+          "balance_USDC": 28796.48125
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x41595326aabe6132fc6c7ae71af087a3a9dbc9f6",
+          "fee": 3000,
+          "liquidity_raw": 292969483741872,
+          "balance_WETH": 2.859076309760657,
+          "balance_USDC": 4178.222945
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x6fa08690355261b5360b2302bbf78f63e2b014f5",
+          "fee": 10000,
+          "liquidity_raw": 527150191113,
+          "balance_WETH": 0.010525290109856218,
+          "balance_USDC": 9.126307
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/USDC",
+          "pool": "0x2f8818d1b0f3e3e295440c1c0cddf40aaa21fa87",
+          "reserve_token0_raw": 736473910839787849,
+          "reserve_token1_raw": 1712839935,
+          "balance_WETH": 0.7364739108397879,
+          "balance_USDC": 1712.839935
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/USDC",
+          "pool": "0xcdac0d6c6c59727a65f871236188350531885c43",
+          "stable": false,
+          "reserve_token0_raw": 816063559848852930360,
+          "reserve_token1_raw": 1897039022651,
+          "balance_WETH": 816.063559848853,
+          "balance_USDC": 1897039.022651
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/USDC",
+          "pool": "0x3548029694fbb241d45fb24ba0cd9c9d4e745f16",
+          "stable": true,
+          "reserve_token0_raw": 2136834625105897742,
+          "reserve_token1_raw": 14873878372,
+          "balance_WETH": 2.1368346251058976,
+          "balance_USDC": 14873.878372
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDC",
+          "pool": "0xdbc6998296caa1652a810dc8d3baf4a8294330f1",
+          "tick_spacing": 1,
+          "liquidity_raw": 3949481104061068,
+          "balance_WETH": 48.19565625858945,
+          "balance_USDC": 7839.687765
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDC",
+          "pool": "0xaad23a67f2ac693abbe543489aeb3f24f561d517",
+          "tick_spacing": 50,
+          "liquidity_raw": 851510925743604,
+          "balance_WETH": 0.29792558420725584,
+          "balance_USDC": 193.907607
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDC",
+          "pool": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+          "tick_spacing": 100,
+          "liquidity_raw": 515225547291118191,
+          "balance_WETH": 1928.9437941780332,
+          "balance_USDC": 932901.867419
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDC",
+          "pool": "0x148bc43946a902258916e580b0e6d92aaa74746f",
+          "tick_spacing": 200,
+          "liquidity_raw": 84925590951931,
+          "balance_WETH": 0.16359642470494715,
+          "balance_USDC": 84.677623
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDC",
+          "pool": "0x0652202c4b2d09cb93aedefadc14b36869483a98",
+          "tick_spacing": 2000,
+          "liquidity_raw": 151119833640086,
+          "balance_WETH": 3.2136372615381217,
+          "balance_USDC": 1734.133235
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "WETH/USDC",
+          "pool": "0xc758d81b9b81a6fcdad075bd471874a2c46b54e0",
+          "tick_spacing": 50,
+          "liquidity_raw": 218825836965101,
+          "balance_WETH": 0.4497543261723971,
+          "balance_USDC": 2013.479952
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "WETH/USDC",
+          "pool": "0x4e392fbfe4d0557c82d2f97f02ec39daa31516dd",
+          "tick_spacing": 1,
+          "liquidity_raw": 5796546582425731,
+          "balance_WETH": 23.417982793476074,
+          "balance_USDC": 9494.771462
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "WETH/USDC",
+          "pool": "0x3fe04a59ebd38cf06080a6f60a98d124eb59392a",
+          "tick_spacing": 50,
+          "liquidity_raw": 298079724020585989,
+          "balance_WETH": 1421.5215689698123,
+          "balance_USDC": 673895.878081
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+          "fee": 100,
+          "liquidity_raw": 323842155844541529,
+          "balance_WETH": 1579.1431774835212,
+          "balance_USDC": 776211.300173
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xb775272e537cc670c65dc852908ad47015244eaf",
+          "fee": 500,
+          "liquidity_raw": 103149876078433385,
+          "balance_WETH": 422.93287290993027,
+          "balance_USDC": 270948.291121
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0xe9d76696f8a35e2e2520e3125875c3af23f1e69c",
+          "fee": 2500,
+          "liquidity_raw": 823340556057834,
+          "balance_WETH": 2.8269310521644933,
+          "balance_USDC": 4113.42158
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDC",
+          "pool": "0x118efef7db0712f03e067122b8f89e7a4b79262f",
+          "fee": 10000,
+          "liquidity_raw": 10093730895564,
+          "balance_WETH": 0.1291430217246184,
+          "balance_USDC": 241.741576
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xd0d182fed9d119e1e41f5199266974f2546eb3f5",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 0.001913768012947467,
+          "balance_USDT": 0.019692
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xd92e0767473d1e3ff11ac036f2b1db90ad0ae55f",
+          "fee": 500,
+          "liquidity_raw": 3173049328266174,
+          "balance_WETH": 10.609795805874331,
+          "balance_USDT": 15459.471405
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xce1d8c90a5f0ef28fe0f457e5ad615215899319a",
+          "fee": 3000,
+          "liquidity_raw": 21288898784649625,
+          "balance_WETH": 38.77943040291243,
+          "balance_USDT": 43637.489678
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x05e5995e09a4494fdc1ede4c1eb02221898bdd48",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 0.001318106853417926,
+          "balance_USDT": 0.428416
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x6410f39bb82730394a546a3ce060797e69f71ca7",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 1e-18,
+          "balance_USDT": 1e-06
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xdc15cb9f03442559bcd21020acd2717b4bc7c7bf",
+          "fee": 3000,
+          "liquidity_raw": 2081604314732,
+          "balance_WETH": 0.012421943404710483,
+          "balance_USDT": 28.167633
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/USDT",
+          "pool": "0xffd4ec4bd2211cbfd58c209fdecc65f63f2b9e4c",
+          "stable": false,
+          "reserve_token0_raw": 4104994167351537,
+          "reserve_token1_raw": 9865120,
+          "balance_WETH": 0.004104994167351537,
+          "balance_USDT": 9.86512
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/USDT",
+          "pool": "0x55b5047988b33e3424ae0c777aafc48e06af134e",
+          "stable": true,
+          "reserve_token0_raw": 17409225791862,
+          "reserve_token1_raw": 128220,
+          "balance_WETH": 1.7409225791862e-05,
+          "balance_USDT": 0.12822
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDT",
+          "pool": "0x4e364ea305fc2b3e264e57813b17be772b3f6a32",
+          "tick_spacing": 1,
+          "liquidity_raw": 0,
+          "balance_WETH": 4e-17,
+          "balance_USDT": 4.5e-05
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/USDT",
+          "pool": "0x9785ef59e2b499fb741674ecf6faf912df7b3c1b",
+          "tick_spacing": 100,
+          "liquidity_raw": 382426933521979751,
+          "balance_WETH": 727.2518571553304,
+          "balance_USDT": 1065077.250853
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x526d54cd4fac2e6b2ddcb6bc98b9292603061f85",
+          "fee": 100,
+          "liquidity_raw": 71924762052570,
+          "balance_WETH": 3.94603019059961,
+          "balance_USDT": 509.299967
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xeed856fc13455fdd285f7431e5f246cc1f00b51e",
+          "fee": 500,
+          "liquidity_raw": 55957496064,
+          "balance_WETH": 0.000839812558530852,
+          "balance_USDT": 0.845042
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0xae601a5d46c803dcac8446e9dfb1438c1cd43195",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_WETH": 1.83e-16,
+          "balance_USDT": 0.000154
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/USDT",
+          "pool": "0x2d08491a464f66e3bd2c729e7496fbeb68ef5be0",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 1e-18,
+          "balance_USDT": 1e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x751864805accc54ce46e09fb7f6c46c907ac8590",
+          "fee": 100,
+          "liquidity_raw": 33418152420646744551,
+          "balance_WETH": 0.005063958043715846,
+          "balance_DAI": 6.102545985331595
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x93e8542e6ca0efffb9d57a270b76712b968a38f5",
+          "fee": 500,
+          "liquidity_raw": 42551459840562896374,
+          "balance_WETH": 1.0085017503184108,
+          "balance_DAI": 648.9338951703389
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0xdcf81663e68f076ef9763442de134fd0699de4ef",
+          "fee": 3000,
+          "liquidity_raw": 69543413907502271534,
+          "balance_WETH": 0.2552107303531859,
+          "balance_DAI": 380.1334721712518
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x48ad1e2e7c447f6814e69aefe3f0203a0cc128af",
+          "fee": 10000,
+          "liquidity_raw": 221025070217496892,
+          "balance_WETH": 0.006909285135002072,
+          "balance_DAI": 17.050477657540718
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0xcbe12d2c0d16f1868ebf68040c28de86ae28e61b",
+          "fee": 100,
+          "liquidity_raw": 23909527845745214289,
+          "balance_WETH": 0.007680245881841533,
+          "balance_DAI": 5.718504882109278
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x77bc7bfb2a37a3bc583117e05fab2ae4526e7102",
+          "fee": 500,
+          "liquidity_raw": 69089566344699753,
+          "balance_WETH": 0.00990139318565747,
+          "balance_DAI": 11.590059149318687
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x4d734eaf2102407825f45571d51fc7c4dae86ff8",
+          "fee": 3000,
+          "liquidity_raw": 31453295780049339480,
+          "balance_WETH": 0.18232406510417848,
+          "balance_DAI": 476.33439275288026
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x5b91f52c98942884030a2bb6d70aff872d035373",
+          "fee": 10000,
+          "liquidity_raw": 873596333206614455,
+          "balance_WETH": 0.008685084736963496,
+          "balance_DAI": 19.828759665317936
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/DAI",
+          "pool": "0xd035d4c8f848dde156ba097fa33df20f6068e29d",
+          "reserve_token0_raw": 21156778376078295,
+          "reserve_token1_raw": 49891336524296100589,
+          "balance_WETH": 0.021156778376078295,
+          "balance_DAI": 49.8913365242961
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/DAI",
+          "pool": "0x9287c921f5d920ceee0d07d7c58d476e46acc640",
+          "stable": false,
+          "reserve_token0_raw": 253698719841189661,
+          "reserve_token1_raw": 591855491737952568784,
+          "balance_WETH": 0.25369871984118963,
+          "balance_DAI": 591.8554917379525
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/DAI",
+          "pool": "0xc078e01b31a3db4af0ed218c028c32bcefc00a40",
+          "stable": true,
+          "reserve_token0_raw": 12775078015094203,
+          "reserve_token1_raw": 90937187990556942228,
+          "balance_WETH": 0.012775078015094202,
+          "balance_DAI": 90.93718799055694
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x88476f48939c802ea75eed438a3576efc202b5dd",
+          "fee": 100,
+          "liquidity_raw": 87584921157993814,
+          "balance_WETH": 0.002106718309572514,
+          "balance_DAI": 4.728319297180364
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/DAI",
+          "pool": "0x9bfa331679b307cf358438f45f6413a205fd3ebf",
+          "fee": 500,
+          "liquidity_raw": 14171112352538909804,
+          "balance_WETH": 0.30820479862013117,
+          "balance_DAI": 2157.3384408704314
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x4c1e404a013bf1917faf2dbf5e5cef3e9bafb5aa",
+          "fee": 100,
+          "liquidity_raw": 598976519724,
+          "balance_WETH": 0.10326503794658413,
+          "balance_cbBTC": 0.0012674
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x7aea2e8a3843516afa07293a10ac8e49906dabd1",
+          "fee": 500,
+          "liquidity_raw": 264933017561982319,
+          "balance_WETH": 6190.234799129839,
+          "balance_cbBTC": 31.16857831
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+          "fee": 3000,
+          "liquidity_raw": 101961509143741451,
+          "balance_WETH": 2929.86922184759,
+          "balance_cbBTC": 41.33655276
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x233571eae953d9d59eefc0769f71dc19287ddccb",
+          "fee": 10000,
+          "liquidity_raw": 661608989063730,
+          "balance_WETH": 29.067472628602964,
+          "balance_cbBTC": 0.55532796
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x40d9447e958f636aa8fbfcb8210115bf45c96cb9",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 1.55037542e-09,
+          "balance_cbBTC": 2e-08
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x358228caaf6c235cdf982bb99e919f6e1028905b",
+          "fee": 500,
+          "liquidity_raw": 38324280535,
+          "balance_WETH": 0.02347274309179978,
+          "balance_cbBTC": 0.000779
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x99dc44b6b406491cad1dd60aaf8992c498d4d5ba",
+          "fee": 3000,
+          "liquidity_raw": 27386543550,
+          "balance_WETH": 0.016313485985562808,
+          "balance_cbBTC": 0.00047251
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0xc5cb2554a3cd47b71766f709141ec49e40448202",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_WETH": 1e-05,
+          "balance_cbBTC": 0.0
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/cbBTC",
+          "pool": "0x2963c3e74e865b8684edab7e78aeb0d0bc13256e",
+          "reserve_token0_raw": 71285987761157,
+          "reserve_token1_raw": 223,
+          "balance_WETH": 7.1285987761157e-05,
+          "balance_cbBTC": 2.23e-06
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/cbBTC",
+          "pool": "0x2578365b3dfa7ffe60108e181efb79feddec2319",
+          "stable": false,
+          "reserve_token0_raw": 138052025618011469681,
+          "reserve_token1_raw": 402228400,
+          "balance_WETH": 138.05202561801147,
+          "balance_cbBTC": 4.022284
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/cbBTC",
+          "pool": "0x22aee3699b6a0fed71490c103bd4e5f3309891d5",
+          "tick_spacing": 1,
+          "liquidity_raw": 609261394376726,
+          "balance_WETH": 23.34799555297518,
+          "balance_cbBTC": 0.32902716
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/cbBTC",
+          "pool": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+          "tick_spacing": 100,
+          "liquidity_raw": 39314531708263804,
+          "balance_WETH": 2120.9493645538746,
+          "balance_cbBTC": 37.80693452
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "WETH/cbBTC",
+          "pool": "0x04cb591bb235edea40eb6b993d94d51df9983927",
+          "tick_spacing": 200,
+          "liquidity_raw": 1175913969749,
+          "balance_WETH": 0.10966506567969826,
+          "balance_cbBTC": 0.00287575
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x7c7420dd105e2779316423ba3e973f434315efa9",
+          "tick_spacing": 1,
+          "liquidity_raw": 15223330440123128,
+          "balance_WETH": 775.8764095629894,
+          "balance_cbBTC": 3.71016952
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x0f6f850bf4356815749e126e407915f74b236e0d",
+          "tick_spacing": 50,
+          "liquidity_raw": 0,
+          "balance_WETH": 2.98202216388e-07,
+          "balance_cbBTC": 5.1e-07
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+          "fee": 100,
+          "liquidity_raw": 34895712082028504,
+          "balance_WETH": 1838.4521139409921,
+          "balance_cbBTC": 13.40969028
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0xd974d59e30054cf1abeded0c9947b0d8baf90029",
+          "fee": 500,
+          "liquidity_raw": 1590862363304543,
+          "balance_WETH": 141.07628490757313,
+          "balance_cbBTC": 0.73817294
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0x5b3613ef9a535b48e82e2800acb77053dfec93b1",
+          "fee": 2500,
+          "liquidity_raw": 836717440133516,
+          "balance_WETH": 25.095411047809765,
+          "balance_cbBTC": 0.51071206
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbBTC",
+          "pool": "0xa97c08bc49c246e583a3557f2922daa9e5d1b404",
+          "fee": 10000,
+          "liquidity_raw": 62642265359,
+          "balance_WETH": 0.003159387476578857,
+          "balance_cbBTC": 8.38e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0xa9dafa443a02fbc907cb0093276b3e6f4ef02a46",
+          "fee": 100,
+          "liquidity_raw": 1360689509579478587748,
+          "balance_WETH": 12.585565970900062,
+          "balance_cbETH": 3.0725211511979325
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x10648ba41b8565907cfa1496765fa4d95390aa0d",
+          "fee": 500,
+          "liquidity_raw": 914273038739337988203,
+          "balance_WETH": 16.517718707072415,
+          "balance_cbETH": 3.957688929181864
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x7b9636266734270de5be02544c04e27046903ff8",
+          "fee": 3000,
+          "liquidity_raw": 2009051818126710664,
+          "balance_WETH": 0.745401921064516,
+          "balance_cbETH": 0.5201361802700017
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x6fb974dcea795d10ade524bcc3fc9e3e9d29ea87",
+          "fee": 10000,
+          "liquidity_raw": 22342871407808828,
+          "balance_WETH": 0.009205576619902525,
+          "balance_cbETH": 0.007286699342634348
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x47c59970b19c1274f4e82f5852ca61bff50796e6",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_WETH": 0.006045414927362412,
+          "balance_cbETH": 2e-18
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0xb81b9aef36c76d740850c31c45697c83468dcb54",
+          "fee": 500,
+          "liquidity_raw": 1590563574793109752473,
+          "balance_WETH": 1.461659267220743,
+          "balance_cbETH": 0.06271620120584703
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "WETH/cbETH",
+          "pool": "0xc8d3aa9182c29a0bd8cf71da3e6c2a35c05bbdbb",
+          "reserve_token0_raw": 294500832259,
+          "reserve_token1_raw": 333471212511,
+          "balance_WETH": 3.33471212511e-07,
+          "balance_cbETH": 2.94500832259e-07
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/cbETH",
+          "pool": "0x44ecc644449fc3a9858d2007caa8cfaa4c561f91",
+          "stable": false,
+          "reserve_token0_raw": 19989188330022036774,
+          "reserve_token1_raw": 22768923120051659044,
+          "balance_WETH": 22.76892312005166,
+          "balance_cbETH": 19.98918833002204
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "WETH/cbETH",
+          "pool": "0x9e8bfeb5c73f3f897bebdb49cc4161fece0b0c55",
+          "stable": true,
+          "reserve_token0_raw": 388245782170369534,
+          "reserve_token1_raw": 916485266458231587,
+          "balance_WETH": 0.9164852664582316,
+          "balance_cbETH": 0.38824578217036954
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "WETH/cbETH",
+          "pool": "0x47ca96ea59c13f72745928887f84c9f52c3d7348",
+          "tick_spacing": 1,
+          "liquidity_raw": 2316269040209510971823,
+          "balance_WETH": 131.6963951876723,
+          "balance_cbETH": 3.0734189042301394
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "WETH/cbETH",
+          "pool": "0x08b93c4b8b1dc85e4084d86439f7629fe3f34be7",
+          "tick_spacing": 1,
+          "liquidity_raw": 0,
+          "balance_WETH": 0.0,
+          "balance_cbETH": 0.0
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x257fcbae4ac6b26a02e4fc5e1a11e4174b5ce395",
+          "fee": 100,
+          "liquidity_raw": 8364029826879123242749,
+          "balance_WETH": 33.566414955812206,
+          "balance_cbETH": 3.4020073527786012
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0xc0efc182479319ff258eca420e2647cd82d3790c",
+          "fee": 500,
+          "liquidity_raw": 5613178706663976358,
+          "balance_WETH": 5.338163930756987,
+          "balance_cbETH": 0.15485425247383883
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "WETH/cbETH",
+          "pool": "0x98d2e8e18de100ff872eaa60392d580146a9d606",
+          "fee": 10000,
+          "liquidity_raw": 3527740261467882,
+          "balance_WETH": 0.001320489402213296,
+          "balance_cbETH": 0.00107144347995302
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xd56da2b74ba826f19015e6b7dd9dae1903e85da1",
+          "fee": 100,
+          "liquidity_raw": 169842998242,
+          "balance_USDC": 14093.115136,
+          "balance_USDT": 179550.985642
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xb7f084c7f7f1c680d08780e2b2ef4f2133db0df8",
+          "fee": 500,
+          "liquidity_raw": 5102962437,
+          "balance_USDC": 22.282371,
+          "balance_USDT": 16289.693396
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x82ccd0de0293ccbd2184901a69fdc2dd8073320e",
+          "fee": 3000,
+          "liquidity_raw": 813397647217,
+          "balance_USDC": 7.958269,
+          "balance_USDT": 4853.043923
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x5d165468c8a6cf3d50702850ed29becb9ac9ca4d",
+          "fee": 10000,
+          "liquidity_raw": 238444,
+          "balance_USDC": 0.051445,
+          "balance_USDT": 0.04669
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0xfeaf8296ce905884a528da784a52964d9f614f00",
+          "fee": 100,
+          "liquidity_raw": 1500849,
+          "balance_USDC": 10.673275,
+          "balance_USDT": 380.485001
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x6e6801ff05880f96448d06c50792667fa3f58030",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 9e-06,
+          "balance_USDT": 1e-05
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/USDT",
+          "pool": "0x5e7801e9b3aff7c785e4e74ff2076d4967d0cb6b",
+          "stable": false,
+          "reserve_token0_raw": 101380800,
+          "reserve_token1_raw": 101691440,
+          "balance_USDC": 101.3808,
+          "balance_USDT": 101.69144
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/USDT",
+          "pool": "0x96508ae8037c6bd16162620187691f1c1e3e07c1",
+          "stable": true,
+          "reserve_token0_raw": 1725071740,
+          "reserve_token1_raw": 2367901314,
+          "balance_USDC": 1725.07174,
+          "balance_USDT": 2367.901314
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "USDC/USDT",
+          "pool": "0xa41bc0affba7fd420d186b84899d7ab2ac57fcd1",
+          "tick_spacing": 1,
+          "liquidity_raw": 53660438903,
+          "balance_USDC": 9152.856689,
+          "balance_USDT": 595855.528808
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x5f07bb9fee6062e9d09a52e6d587c64bad6ba706",
+          "fee": 100,
+          "liquidity_raw": 153642843857,
+          "balance_USDC": 4877.938441,
+          "balance_USDT": 30730.565459
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x2db0fff9f1afcef3a77e673dfba9883c036ebd53",
+          "fee": 500,
+          "liquidity_raw": 20065384548,
+          "balance_USDC": 0.642332,
+          "balance_USDT": 40.78656
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/USDT",
+          "pool": "0x0bfff3a8f90fbdd39a5ddd1ee9eb2f9a11e79b86",
+          "fee": 10000,
+          "liquidity_raw": 73636287599,
+          "balance_USDC": 1450.382009,
+          "balance_USDT": 1434.521808
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xc18f50d6a832f12f6dcaaeee8d0c87a65b96787e",
+          "fee": 100,
+          "liquidity_raw": 281387112345529503967,
+          "balance_USDC": 7978.431337,
+          "balance_DAI": 9331.89724145691
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x19a8b1542b807cd6a76fcbb5ff5f53c6169f36d7",
+          "fee": 500,
+          "liquidity_raw": 336477451049404318,
+          "balance_USDC": 322.342485,
+          "balance_DAI": 38.23687529756735
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xe63174bc0ee37b76d28956b680af6ba4c508f48a",
+          "fee": 3000,
+          "liquidity_raw": 196281880899295,
+          "balance_USDC": 9.11577,
+          "balance_DAI": 9.51229493217687
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x6ef112968283869e99dc8a6bccc7346302c3bdba",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 4.3e-05,
+          "balance_DAI": 8.38534532238e-07
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x3bd740dc10864f35001aab7771c56a85c48c901b",
+          "fee": 100,
+          "liquidity_raw": 3766853870169371741,
+          "balance_USDC": 2421.276525,
+          "balance_DAI": 1385.9592803894523
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x7b0167b54294f8fe6b14aaf70cc934d0d4f3f8db",
+          "fee": 500,
+          "liquidity_raw": 89995380471,
+          "balance_USDC": 0.106253,
+          "balance_DAI": 0.10620145552291904
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xf336d4b2cae611133bb72ba6f68f73d12b160a48",
+          "fee": 3000,
+          "liquidity_raw": 271094537358816,
+          "balance_USDC": 1.555215,
+          "balance_DAI": 1.1850142101931094
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/DAI",
+          "pool": "0xb3360950ff03cf21a9f856402dc3c4beb98824d9",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 2e-06,
+          "balance_DAI": 2e-18
+        },
+        {
+          "dex": "sushi_v2",
+          "pair": "USDC/DAI",
+          "pool": "0xf12084a6393b01c1bf7490cf2430cfd5d390ba5d",
+          "reserve_token0_raw": 4343162714282943359,
+          "reserve_token1_raw": 4346147,
+          "balance_USDC": 4.346147,
+          "balance_DAI": 4.343162714282943
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/DAI",
+          "pool": "0x4f5f4b7381b2445937dab831fc1952ecbb834e53",
+          "stable": false,
+          "reserve_token0_raw": 4692565116514646648,
+          "reserve_token1_raw": 4707470,
+          "balance_USDC": 4.70747,
+          "balance_DAI": 4.692565116514647
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/DAI",
+          "pool": "0x67b00b46fa4f4f24c03855c5c8013c0b938b3eec",
+          "stable": true,
+          "reserve_token0_raw": 2369547648243476405006,
+          "reserve_token1_raw": 2640224603,
+          "balance_USDC": 2640.224603,
+          "balance_DAI": 2369.5476482434765
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "USDC/DAI",
+          "pool": "0x4a20660ec636c69af94cb4b251f6055f4bff40ec",
+          "tick_spacing": 1,
+          "liquidity_raw": 208470633005394095,
+          "balance_USDC": 48.083073,
+          "balance_DAI": 5.078932103692803
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x345825a980bd94e1480bc4f20fe4e3dae2f23dd3",
+          "fee": 100,
+          "liquidity_raw": 1071431451705123135,
+          "balance_USDC": 5048.024112,
+          "balance_DAI": 4613.417160076195
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/DAI",
+          "pool": "0x486d1e5e5f97f44ea8db217598c1e61e21f54084",
+          "fee": 500,
+          "liquidity_raw": 136228233583937618,
+          "balance_USDC": 66.388923,
+          "balance_DAI": 3.918947393300523
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0xe9e25e35aa99a2a60155010802b81a25c45ba185",
+          "fee": 100,
+          "liquidity_raw": 1868412,
+          "balance_USDC": 116.662139,
+          "balance_cbBTC": 0.0046803
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0xfbb6eed8e7aa03b138556eedaf5d271a5e1e43ef",
+          "fee": 500,
+          "liquidity_raw": 2237940196232,
+          "balance_USDC": 4564328.759349,
+          "balance_cbBTC": 62.13607234
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0xec558e484cc9f2210714e345298fdc53b253c27d",
+          "fee": 3000,
+          "liquidity_raw": 575800274914,
+          "balance_USDC": 917277.970538,
+          "balance_cbBTC": 12.3599069
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x3e7586d52a9d07f8611b8ecf6ccc8a689c34a659",
+          "fee": 10000,
+          "liquidity_raw": 1000733240,
+          "balance_USDC": 2075.933552,
+          "balance_cbBTC": 0.01736982
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x0269014ddb6bfaaf5fd9c8a4acc5250dd68350d9",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC": 3.5e-05,
+          "balance_cbBTC": 2.4e-07
+        },
+        {
+          "dex": "sushi_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x7d41d5003dcd7351c8dbbd156b166a42399a3151",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.087813,
+          "balance_cbBTC": 1.951e-05
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/cbBTC",
+          "pool": "0x9c38b55f9a9aba91bbcedeb12bf4428f47a6a0b8",
+          "stable": false,
+          "reserve_token0_raw": 126536570284,
+          "reserve_token1_raw": 158211095,
+          "balance_USDC": 126536.570284,
+          "balance_cbBTC": 1.58211095
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "USDC/cbBTC",
+          "pool": "0x4f5905e36ac07ee1f01ffb939aa7f212a58d5cdf",
+          "tick_spacing": 1,
+          "liquidity_raw": 3426764069,
+          "balance_USDC": 8112.968752,
+          "balance_cbBTC": 0.06672564
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "USDC/cbBTC",
+          "pool": "0x798a3ae1563c47a310541cc6277ee879cd1be667",
+          "tick_spacing": 50,
+          "liquidity_raw": 0,
+          "balance_USDC": 4.8e-05,
+          "balance_cbBTC": 3.9e-07
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "USDC/cbBTC",
+          "pool": "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+          "tick_spacing": 100,
+          "liquidity_raw": 1007012750901,
+          "balance_USDC": 1687504.817744,
+          "balance_cbBTC": 39.17037579
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "USDC/cbBTC",
+          "pool": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "tick_spacing": 2000,
+          "liquidity_raw": 998166585978,
+          "balance_USDC": 3694712.227178,
+          "balance_cbBTC": 32.37814554
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "USDC/cbBTC",
+          "pool": "0x95dada6bc214a86af204250f7b6ff873b52e0289",
+          "tick_spacing": 1,
+          "liquidity_raw": 551450143,
+          "balance_USDC": 3264.985955,
+          "balance_cbBTC": 0.03407323
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "USDC/cbBTC",
+          "pool": "0x4cf105267d8088698f9668059bc94d8948c03bdf",
+          "tick_spacing": 200,
+          "liquidity_raw": 150540810,
+          "balance_USDC": 399.458658,
+          "balance_cbBTC": 3.421e-05
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x9d14ff91ae2c6e3d1a760542248b6c7f206894b0",
+          "tick_spacing": 1,
+          "liquidity_raw": 12519609478,
+          "balance_USDC": 13090.404884,
+          "balance_cbBTC": 0.24820841
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x160d7e9d948b16c163332a277b393c288408eb12",
+          "tick_spacing": 50,
+          "liquidity_raw": 956121499473,
+          "balance_USDC": 1183366.387091,
+          "balance_cbBTC": 16.99925996
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+          "fee": 100,
+          "liquidity_raw": 405955353204,
+          "balance_USDC": 569320.910964,
+          "balance_cbBTC": 14.52042459
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x26e263efdc91f0d3279e2ec2bd58a7ca5c2fce62",
+          "fee": 500,
+          "liquidity_raw": 24711052080,
+          "balance_USDC": 48366.864801,
+          "balance_cbBTC": 1.72853114
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0x748bb91fc5f4200302d9a79185bc161260a1b461",
+          "fee": 2500,
+          "liquidity_raw": 2666691886,
+          "balance_USDC": 12809.16643,
+          "balance_cbBTC": 0.23259133
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbBTC",
+          "pool": "0xbd65764c8eb1b8858d323066f488b73f6fe22dc9",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 3e-06,
+          "balance_cbBTC": 5.3e-07
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0xf0913af89c3cf89256196fe5ea3e5370dc90c026",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC": 1e-06,
+          "balance_cbETH": 1e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0xfdebedc97d56edd31abdcb887570546b257964f2",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.02575,
+          "balance_cbETH": 3.2856547e-11
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0xa8e4c55d6daf4d768aeba2378c1ad94c112ef48a",
+          "fee": 3000,
+          "liquidity_raw": 155485362852518,
+          "balance_USDC": 1576.71401,
+          "balance_cbETH": 0.8770678414455217
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0xe65ef07833be37659919bbe7ec366a2ec889c884",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.13812,
+          "balance_cbETH": 1.0000004657801567
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDC/cbETH",
+          "pool": "0xa1d2ee6212d4375f154393e59895a5d27859c4e4",
+          "stable": false,
+          "reserve_token0_raw": 153129018015173284,
+          "reserve_token1_raw": 407139005,
+          "balance_USDC": 407.139005,
+          "balance_cbETH": 0.15312901801517328
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "USDC/cbETH",
+          "pool": "0x7bbbf3bb3731639d2b19e95803c58aa5ec9b045d",
+          "tick_spacing": 1,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.000854,
+          "balance_cbETH": 5.19979265766e-06
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0x5b2c49f59e2fe626435bb2698b62908ee5563c42",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.002744,
+          "balance_cbETH": 5.07890979292e-07
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0xcb5efa901172c092fac066f3773ad0e022a87d72",
+          "fee": 500,
+          "liquidity_raw": 2843663480,
+          "balance_USDC": 0.292694,
+          "balance_cbETH": 0.000921260340271188
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDC/cbETH",
+          "pool": "0x576bcf3e94890b2df7ebf38b0021b297bb81f4f6",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDC": 0.002736,
+          "balance_cbETH": 2e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0xd64e7bf24ee5cc10b5ab92525d256300ad3fb81e",
+          "fee": 100,
+          "liquidity_raw": 50005549557225254,
+          "balance_USDT": 11067.824016,
+          "balance_DAI": 285.21442432779503
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x4b6e93ccc3897a686c741f5f2677b61a8e78f092",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDT": 5e-06,
+          "balance_DAI": 9e-18
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDT/DAI",
+          "pool": "0xd2af00a1e12a24f07a9f92864441e61c6452fa10",
+          "stable": false,
+          "reserve_token0_raw": 500879144949485567732,
+          "reserve_token1_raw": 502985265,
+          "balance_USDT": 502.985265,
+          "balance_DAI": 500.8791449494856
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "USDT/DAI",
+          "pool": "0xb204fc79f4fb843996dd56528223a921c8a12093",
+          "stable": true,
+          "reserve_token0_raw": 0,
+          "reserve_token1_raw": 0,
+          "balance_USDT": 0.0,
+          "balance_DAI": 0.0
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/DAI",
+          "pool": "0x1b4f28ebda0c0423e06e74ec14ae774487768a4a",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_USDT": 1e-06,
+          "balance_DAI": 1e-18
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/cbBTC",
+          "pool": "0x7bf6a61286b55c992a75c22156918b7cb16df9a8",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_USDT": 0.000613,
+          "balance_cbBTC": 4.6e-06
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/cbBTC",
+          "pool": "0x4bf5f8c5e3b964c9fe77de4363182b5bf55221e2",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 9e-06,
+          "balance_cbBTC": 1e-07
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/cbBTC",
+          "pool": "0xf51572e21799040dd467c79a85f225998d32103b",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDT": 0.032271,
+          "balance_cbBTC": 3.669e-05
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/cbBTC",
+          "pool": "0x9f809b01c801c096956381645f43236e18a6c18d",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_USDT": 1e-06,
+          "balance_cbBTC": 2e-08
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugecaps",
+          "pair": "USDT/cbBTC",
+          "pool": "0x6567cb712b9bcf7c1c568ebe8c2657830e299442",
+          "tick_spacing": 100,
+          "liquidity_raw": 4356882,
+          "balance_USDT": 42.309896,
+          "balance_cbBTC": 0.01071212
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "USDT/cbBTC",
+          "pool": "0x37e7f67cac338dbe2ebb2996f7117ca396a148b2",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_USDT": 2e-06,
+          "balance_cbBTC": 1e-08
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "USDT/cbETH",
+          "pool": "0x1160f35de28eae4ea3bfbd153bd2e7fa54695474",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_USDT": 2.4e-05,
+          "balance_cbETH": 1.16e-16
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/cbBTC",
+          "pool": "0x8f5fe1aa4f82f26ebfe73663ebac0800b9e7686d",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_DAI": 0.000277024631031363,
+          "balance_cbBTC": 1e-08
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/cbBTC",
+          "pool": "0xc32493df87bdd8b8db551a6312a7e6940db0a399",
+          "fee": 3000,
+          "liquidity_raw": 0,
+          "balance_DAI": 1.667e-15,
+          "balance_cbBTC": 1e-08
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "DAI/cbETH",
+          "pool": "0x7fe00cbf5eda14406c7595a3f8daa5bfed324dc8",
+          "fee": 10000,
+          "liquidity_raw": 3224908584082424,
+          "balance_DAI": 0.09840024895986121,
+          "balance_cbETH": 0.000125239828348715
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "DAI/cbETH",
+          "pool": "0xb13a01382ff777b8bcf051a512a72f3316a31010",
+          "stable": false,
+          "reserve_token0_raw": 195313734550742,
+          "reserve_token1_raw": 550683198525579760,
+          "balance_DAI": 0.5506831985255798,
+          "balance_cbETH": 0.000195313734550742
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "DAI/cbETH",
+          "pool": "0x50932aa803448cacc9afa4d659c5944dc87db697",
+          "fee": 500,
+          "liquidity_raw": 0,
+          "balance_DAI": 0.014205346238470274,
+          "balance_cbETH": 0.0
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x2891a4ad99014b8020ad80335330f00f8aefd787",
+          "fee": 100,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 5e-08,
+          "balance_cbETH": 1.2e-17
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0xfe8a89a48a242953481f41cd106f7672a1c0472e",
+          "fee": 500,
+          "liquidity_raw": 30562387192377,
+          "balance_cbBTC": 2.571e-05,
+          "balance_cbETH": 0.022965898316443068
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x31789cbcce6c48881be05a21f165a13dac41da7b",
+          "fee": 3000,
+          "liquidity_raw": 851238722757,
+          "balance_cbBTC": 0.00425275,
+          "balance_cbETH": 0.15557509005037118
+        },
+        {
+          "dex": "uniswap_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x015e02b9b3ceed65ef5a4a21ee11c27573ee9a29",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 2.72e-06,
+          "balance_cbETH": 2.65e-16
+        },
+        {
+          "dex": "aerodrome_v2",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x99d160cdbd429c86a3db32906000a2cfd4c3120c",
+          "stable": false,
+          "reserve_token0_raw": 113614060051578574,
+          "reserve_token1_raw": 377818,
+          "balance_cbBTC": 0.00377818,
+          "balance_cbETH": 0.11361406005157858
+        },
+        {
+          "dex": "aerodrome_slipstream_initial",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x579b8f41101a5feb60f8b2908e85251e6628ced6",
+          "tick_spacing": 200,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 2e-08,
+          "balance_cbETH": 4.277586015143e-06
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x12749ed4e7f68cf2bf9100dc345e298cbc83f6e3",
+          "tick_spacing": 1,
+          "liquidity_raw": 1526764,
+          "balance_cbBTC": 1.5e-07,
+          "balance_cbETH": 1.5540064015e-07
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x74e37a8d7cea81577cccc5c70c86263d3173f920",
+          "tick_spacing": 100,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 6e-08,
+          "balance_cbETH": 4e-18
+        },
+        {
+          "dex": "aerodrome_slipstream_gaugesv3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x0fc7ab2054d719649348efe055c8a639b96b13d3",
+          "tick_spacing": 2000,
+          "liquidity_raw": 1526679,
+          "balance_cbBTC": 4e-08,
+          "balance_cbETH": 1.104741970731e-06
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0xc11821470aa1ef276de8c5c3d0db84efc806fa11",
+          "fee": 100,
+          "liquidity_raw": 237136848834,
+          "balance_cbBTC": 0.00219282,
+          "balance_cbETH": 0.5229654074156665
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x833173d11a5a3730893e6414a390890687f56011",
+          "fee": 2500,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 6.4e-07,
+          "balance_cbETH": 2.4039758609258e-05
+        },
+        {
+          "dex": "pancake_v3",
+          "pair": "cbBTC/cbETH",
+          "pool": "0x21a2baf7cb4e905866327d62e356223e703c2ce0",
+          "fee": 10000,
+          "liquidity_raw": 0,
+          "balance_cbBTC": 1e-08,
+          "balance_cbETH": 1e-18
+        }
+      ]
+    }
+  },
+  "flash_fee_bps": {
+    "arbitrum": {
+      "aave_v3_flashLoanSimple": 5,
+      "uniswap_v3_flash_by_pool_fee_tier_bps": [
+        1,
+        5,
+        30,
+        100
+      ],
+      "balancer_v2": 0,
+      "source": "Aave FLASHLOAN_PREMIUM_TOTAL() read on-chain; Balancer flash fee read on-chain via ProtocolFeesCollector"
+    },
+    "base": {
+      "aave_v3_flashLoanSimple": 5,
+      "uniswap_v3_flash_by_pool_fee_tier_bps": [
+        1,
+        5,
+        30,
+        100
+      ],
+      "pancake_v3_flash_by_pool_fee_tier_bps": [
+        1,
+        5,
+        25,
+        100
+      ],
+      "balancer_v2": 0,
+      "source": "Aave FLASHLOAN_PREMIUM_TOTAL() read on-chain; Balancer flash fee read on-chain via ProtocolFeesCollector"
+    }
+  },
+  "unverified": [
+    {
+      "item": "Camelot V2 and Algebra (Camelot V3) factory/router addresses: source not obtained",
+      "reason": "docs.camelot.exchange contract pages render no addresses in static HTML; router.factory() matches the factory on-chain, but the official source is unconfirmed"
+    },
+    {
+      "item": "Sushi V3 SwapRouter address (Arbitrum and Base)",
+      "reason": "not present in the Sushi SDK constants; the NonfungiblePositionManager and factory are verified"
+    },
+    {
+      "item": "Balancer V2 Vault on Base as an official deployment",
+      "reason": "bytecode and fee read verified on-chain, but no official Base entry was found in @balancer-labs/v2-deployments 3.2.0 and the docs-v2 deployment table did not render its addresses"
+    },
+    {
+      "item": "Pancake v3 router/quoter addresses (Arbitrum and Base)",
+      "reason": "only factory (and deployer) taken from the SDK; router and quoter not sourced"
+    },
+    {
+      "item": "Base USDT and DAI token addresses",
+      "reason": "taken from the Uniswap default token list (not Aave); on-chain symbol/decimals read verified, but not cross-checked against an Aave reserve"
+    },
+    {
+      "item": "USD price for WBTC, ARB, cbBTC",
+      "reason": "no on-chain USD feed read in this run; TVL-ish values for these pools are in raw token units only"
+    },
+    {
+      "item": "Aave Arbitrum USDC.e reserve is frozen",
+      "reason": "on-chain flag read (frozen=True); flash-loan enabled bit is set; whether frozen reserves allow flash loans in practice was not tested with a transaction"
+    }
+  ]
+}
