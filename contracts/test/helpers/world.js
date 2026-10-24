@@ -11,6 +11,8 @@ async function deployToken(kind, name) {
       return (await ethers.getContractFactory("MockFeeOnTransferToken")).deploy(name, name);
     case "hook":
       return (await ethers.getContractFactory("MockHookToken")).deploy(name, name);
+    case "blacklist":
+      return (await ethers.getContractFactory("MockBlacklistToken")).deploy(name, name);
     case "rebase":
       return (await ethers.getContractFactory("MockRebasingToken")).deploy();
     default:

@@ -24,7 +24,8 @@ contract MockV3Pool {
         PARTIAL, // fills half
         SHORT_PAY, // reports `out` but sends out - 1
         NEG_OWED, // reports a negative amount on the input side
-        NO_CALLBACK // never calls back
+        NO_CALLBACK, // never calls back
+        UNDERASK // asks for amountIn - 1 in the callback but reports the full amountIn as paid
     }
 
     address public token0;
@@ -50,6 +51,11 @@ contract MockV3Pool {
     }
 
     function _callback(int256 a0, int256 a1) internal {
+        if (mode == Mode.UNDERASK) {
+            // ask for one less than swap() will report as paid
+            if (a0 > 0) a0 -= 1;
+            else a1 -= 1;
+        }
         if (pancake) IPancakeV3CbMock(msg.sender).pancakeV3SwapCallback(a0, a1, "");
         else IUniV3CbMock(msg.sender).uniswapV3SwapCallback(a0, a1, "");
     }
@@ -90,6 +96,7 @@ contract MockV3Pool {
         uint256 balBefore = tIn.balanceOf(address(this));
         _callback(a0, a1);
         if (m == Mode.DOUBLE_CALLBACK) _callback(a0, a1);
+        if (m == Mode.UNDERASK) owed -= 1;
         if (m != Mode.NEG_OWED) require(tIn.balanceOf(address(this)) >= balBefore + owed, "MockV3: not paid");
     }
 }
